@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.3.450">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Mike Subelsky">
+<meta name="dcterms.date" content="2024-01-10">
+<meta name="keywords" content="graph deep learning, gis, gldNET, crime forecasting, machine learning">
+
+<title>CrimeGraph WIP: Feature Engineering the Street Graph</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="street_graph_feature_engineering_files/libs/clipboard/clipboard.min.js"></script>
+<script src="street_graph_feature_engineering_files/libs/quarto-html/quarto.js"></script>
+<script src="street_graph_feature_engineering_files/libs/quarto-html/popper.min.js"></script>
+<script src="street_graph_feature_engineering_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="street_graph_feature_engineering_files/libs/quarto-html/anchor.min.js"></script>
+<link href="street_graph_feature_engineering_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="street_graph_feature_engineering_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="street_graph_feature_engineering_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="street_graph_feature_engineering_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="street_graph_feature_engineering_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&amp;display=swap&amp;text=Home%20Contact" rel="stylesheet">
+
+<style>
+    nav#header-ribbon {
+        background-color: #070707; /* Rich Black FOGRA 39 */
+        font-family: 'Orbitron', 'Arial', sans-serif;
+    }
+
+    nav#header-ribbon a {
+        color: #b7fdfe;
+    }
+
+    .footer {
+        text-align: center;
+    }
+</style>
+</head><body><nav id="header-ribbon" class="p-1">
+    <a href="/">Home</a>
+    <span class="divider">|</span>
+    <a href="mailto:contact@subelsky.com?subject=Hello%20Mike">Contact</a>
+</nav>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" integrity="sha512-c3Nl8+7g4LMSTdrm621y7kf9v3SDPnhxLNhcjFJbKECVnmZHTdo+IRO05sNLTH/D3vA6u1X32ehoLC7WFVdheg==" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script>
+<script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
+
+
+
+
+
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Contents</h2>
+   
+  <ul>
+  <li><a href="#introduction" id="toc-introduction" class="nav-link active" data-scroll-target="#introduction">Introduction</a></li>
+  <li><a href="#ai-safety-caveat" id="toc-ai-safety-caveat" class="nav-link" data-scroll-target="#ai-safety-caveat">AI Safety Caveat</a></li>
+  <li><a href="#loading-street-segment-geometry" id="toc-loading-street-segment-geometry" class="nav-link" data-scroll-target="#loading-street-segment-geometry"><span class="header-section-number">1</span> Loading Street Segment Geometry</a></li>
+  <li><a href="#restrict-the-data-to-streets-within-city-limits" id="toc-restrict-the-data-to-streets-within-city-limits" class="nav-link" data-scroll-target="#restrict-the-data-to-streets-within-city-limits"><span class="header-section-number">2</span> Restrict the Data to Streets Within City Limits</a></li>
+  <li><a href="#plot-filtered-street-segments" id="toc-plot-filtered-street-segments" class="nav-link" data-scroll-target="#plot-filtered-street-segments"><span class="header-section-number">3</span> Plot Filtered Street Segments</a></li>
+  <li><a href="#create-a-sample-of-streets" id="toc-create-a-sample-of-streets" class="nav-link" data-scroll-target="#create-a-sample-of-streets"><span class="header-section-number">4</span> Create a Sample of Streets</a></li>
+  <li><a href="#create-a-sample-street-graph" id="toc-create-a-sample-street-graph" class="nav-link" data-scroll-target="#create-a-sample-street-graph"><span class="header-section-number">5</span> Create a Sample Street Graph</a></li>
+  <li><a href="#plot-street-sample-network-graph" id="toc-plot-street-sample-network-graph" class="nav-link" data-scroll-target="#plot-street-sample-network-graph"><span class="header-section-number">6</span> Plot Street Sample Network Graph</a></li>
+  <li><a href="#create-the-full-street-graph-for-model-training" id="toc-create-the-full-street-graph-for-model-training" class="nav-link" data-scroll-target="#create-the-full-street-graph-for-model-training"><span class="header-section-number">7</span> Create the Full Street Graph for Model Training</a></li>
+  <li><a href="#plot-the-full-street-graph" id="toc-plot-the-full-street-graph" class="nav-link" data-scroll-target="#plot-the-full-street-graph"><span class="header-section-number">8</span> Plot the Full Street Graph</a></li>
+  <li><a href="#save-the-graph-to-disk" id="toc-save-the-graph-to-disk" class="nav-link" data-scroll-target="#save-the-graph-to-disk"><span class="header-section-number">9</span> Save the Graph to Disk</a></li>
+  <li><a href="#up-next" id="toc-up-next" class="nav-link" data-scroll-target="#up-next">Up Next</a></li>
+  </ul>
+</nav>
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">CrimeGraph WIP: Feature Engineering the Street Graph</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p><a href="https://www.subelsky.com">Mike Subelsky</a> </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">January 10, 2024</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+</header>
+
+<section id="introduction" class="level2 unnumbered">
+<h2 class="unnumbered anchored" data-anchor-id="introduction">Introduction</h2>
+<p>In the CrimeGraph project, I will explore training a graph deep learning model to forecast the probability of crime events in the City of Baltimore, using data provided by <a href="https://spotcrime.com/#what-is-spotcrime">SpotCrime</a>. SpotCrime maintains a uniquely comprehensive database of geo-coded crime reports obtained from public safety databases and news reports from across the country. They were kind enough to grant me access to 23 years of data documenting crime events in the Baltimore.</p>
+<p>I plan to adopt the GLDNet<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a> architecture described in the 2020 paper <em><a href="https://discovery.ucl.ac.uk/id/eprint/10085742/">Graph Deep Learning Model for Network-based Predictive Hotspot Mapping of Sparse Spatio-Temporal Events</a></em>.</p>
+<p>Models with this design can learn from the spatial patterns of crime events by representing intersecting city streets as a graph of nodes and edges.</p>
+<p>In this WIP<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a> notebook, we’ll use geographic data to prepare the street graph, as part of a process known as ‘feature engineering’. In a future notebook, we will perform feature engineering of the SpotCrime data itself.</p>
+</section>
+<section id="ai-safety-caveat" class="level2 unnumbered">
+<h2 class="unnumbered anchored" data-anchor-id="ai-safety-caveat">AI Safety Caveat</h2>
+<div class="callout callout-style-default callout-caution callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Caution
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Machine learning techniques frequently cause harm in law enforcement contexts due to societal biases baked into the tools and data we use to train models. I am committed to ensuring that this experiment demonstrates positive ways to improve public safety.</p>
+</div>
+</div>
+<p>Here are the steps I have taken so far:</p>
+<ul>
+<li><p>Focusing on a subgraph of streets running west-to-east across Baltimore’s core, to ensure we train the model on events in a variety of neighborhoods (important because of the extreme levels of racial segregation in the city).</p></li>
+<li><p>Restricting the goal to forecasting only violent crimes (thus excluding property crimes). If deep learning technology can be used to reliably prevent people from becoming victims of violent crime, it may be worth the risk. This assumption would need to be tested in dialogue with affected communities before fielding it as a forecasting tool.</p></li>
+<li><p>Using language that focuses on prevention, and not police response. The system should make forecasts that could be used to cue community crime prevention resources (such as violence interrupters).</p></li>
+</ul>
+<p>Please <a href="mailto:contact@subelsky.com">let me know</a> if you have suggestions of other risk mitigation measures.</p>
+</section>
+<section id="loading-street-segment-geometry" class="level2" data-number="1">
+<h2 data-number="1" class="anchored" data-anchor-id="loading-street-segment-geometry"><span class="header-section-number">1</span> Loading Street Segment Geometry</h2>
+<p>We begin by loading a GIS<a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a> shapefile describing the geometry of Baltimore streets. The shapefile was downloaded from <a href="https://data-maryland.opendata.arcgis.com/datasets/maryland::baltimore-city-roads/explore?location=39.297904%2C-76.586923%2C13.00">Maryland’s Open Data portal</a>.</p>
+<div class="cell" data-execution_count="1">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Load geopandas, an open source code library that processes shapefile data</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> geopandas <span class="im">as</span> gpd</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Read the shapefile into memory. gdf stands for 'geodataframe'</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>streets_gdf <span class="op">=</span> gpd.read_file(<span class="st">'../../data/city_streets/MDOT_Know_Your_Roads.shp'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>The geodataframe coordinates are specified in spherical coordinates<a href="#fn4" class="footnote-ref" id="fnref4" role="doc-noteref"><sup>4</sup></a> (hours/minutes/seconds), which are incovenient for measuring distances between intersecting streets. Since Baltimore is a relatively small area, we can ignore the curvature of the Earth, enabling us to measure straight-line<a href="#fn5" class="footnote-ref" id="fnref5" role="doc-noteref"><sup>5</sup></a> distances in meters.</p>
+<div class="cell" data-execution_count="2">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Convert the geodataframe to use the Maryland State Plane coordinate system,</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="co"># delineated in meters</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>streets_gdf <span class="op">=</span> streets_gdf.to_crs(epsg<span class="op">=</span><span class="dv">26985</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell" data-execution_count="3">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Remove unused columns from the shapefile, and rename remaining columns</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="co"># so they are easier to read</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>streets_gdf.drop(columns<span class="op">=</span>[<span class="st">'MUNICIPALI'</span>, <span class="st">'OWNERSHIP'</span>, <span class="st">'SHAPE_Leng'</span>], inplace<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>streets_gdf.rename(columns<span class="op">=</span>{<span class="st">'OBJECTID'</span>: <span class="st">'NodeID'</span>, <span class="st">'ROAD_NAME'</span>: <span class="st">'Name'</span>}, inplace<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>streets_gdf.head()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="3">
+<div>
+
+
+<table class="dataframe table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">NodeID</th>
+<th data-quarto-table-cell-role="th">Name</th>
+<th data-quarto-table-cell-role="th">geometry</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>367091</td>
+<td>HAMPNETT AV</td>
+<td>LINESTRING Z (437097.924 186262.548 0.000, 437...</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>367095</td>
+<td>RASPE AV</td>
+<td>LINESTRING Z (439591.312 187041.316 0.000, 439...</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">2</td>
+<td>367101</td>
+<td>CARBORE WY</td>
+<td>LINESTRING Z (439647.748 179306.321 0.000, 439...</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">3</td>
+<td>367108</td>
+<td>LAKEHURST DR (NB/L)</td>
+<td>LINESTRING Z (431231.983 189327.930 0.000, 431...</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">4</td>
+<td>367122</td>
+<td>BANK ST</td>
+<td>LINESTRING Z (440417.241 180192.691 0.000, 440...</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+<p>Note the <code>geometry</code> column: it contains 3D <code>LineString</code> segments, each made up of a series of points with 3 coordinates. The collection of <code>LineStrings</code> describes the path of each street segment. One street is often represented by multiple segments.</p>
+</section>
+<section id="restrict-the-data-to-streets-within-city-limits" class="level2" data-number="2">
+<h2 data-number="2" class="anchored" data-anchor-id="restrict-the-data-to-streets-within-city-limits"><span class="header-section-number">2</span> Restrict the Data to Streets Within City Limits</h2>
+<p>Since we are only interested in forecasting events within city limits, we should exclude streets that are maintained by the city, but which lie outside of those limits.</p>
+<div class="cell" data-execution_count="4">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 1. filter_gdf() is a custom function defined in the lib/ directory of this project</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lib.geo_utils <span class="im">import</span> filter_gdf</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="co"># 2. Define city limits using spherical coordinates (degrees of latitude and longitude)</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>minLat, minLon <span class="op">=</span> <span class="fl">39.19067660786725</span>, <span class="op">-</span><span class="fl">76.71297312947553</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>maxLat, maxLon <span class="op">=</span> <span class="fl">39.37320150131267</span>, <span class="op">-</span><span class="fl">76.510739017176</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="co"># 3. Use the custom function to exclude streets (the function converts spherical</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="co">#    coordinates to the Maryland State Plane coordinate system automatically)</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>streets_gdf <span class="op">=</span> filter_gdf(streets_gdf, minLat<span class="op">=</span>minLat, minLon<span class="op">=</span>minLon, maxLat<span class="op">=</span>maxLat, maxLon<span class="op">=</span>maxLon)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="plot-filtered-street-segments" class="level2" data-number="3">
+<h2 data-number="3" class="anchored" data-anchor-id="plot-filtered-street-segments"><span class="header-section-number">3</span> Plot Filtered Street Segments</h2>
+<p>This gives us a sanity check to make sure we selected the correct streets.</p>
+<div class="cell" data-execution_count="5">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> tkinter <span class="im">import</span> font</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> turtle <span class="im">import</span> width</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">10</span>, <span class="dv">10</span>))</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>streets_gdf.plot(ax<span class="op">=</span>ax, color<span class="op">=</span><span class="st">'lightblue'</span>, linewidth<span class="op">=</span><span class="dv">1</span>)</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>min_x, min_y, max_x, max_y <span class="op">=</span> streets_gdf.total_bounds</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>ax.set_xlim(min_x, max_x)</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>ax.set_ylim(min_y, max_y)</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>plt.title(<span class="st">'City of Baltimore Street Segments'</span>, fontsize<span class="op">=</span><span class="dv">24</span>, fontweight<span class="op">=</span><span class="st">'bold'</span>, fontname<span class="op">=</span><span class="st">'Arial'</span>)</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a><span class="co"># Remove numbers on the axes</span></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>ax.set_xticks([])</span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>ax.set_yticks([])</span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-display">
+<p><img src="street_graph_feature_engineering_files/figure-html/cell-6-output-1.png" class="img-fluid"></p>
+</div>
+</div>
+</section>
+<section id="create-a-sample-of-streets" class="level2" data-number="4">
+<h2 data-number="4" class="anchored" data-anchor-id="create-a-sample-of-streets"><span class="header-section-number">4</span> Create a Sample of Streets</h2>
+<p>Since we will be constructing a graph that represents street intersections, I decided to zoom into a selection a handful of streets in the northern half of the city, to make sure the code for calculating the weights of the edges works correctly.</p>
+<div class="cell" data-execution_count="6">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> re</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lib.geo_utils <span class="im">import</span> filter_gdf</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="co"># match all streets that contain the following substrings</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>regex_pattern <span class="op">=</span> <span class="vs">r'(?:BALTIMORE ST|CALVERT ST|SOUTH ST)'</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>street_sample <span class="op">=</span> streets_gdf[streets_gdf[<span class="st">'Name'</span>].<span class="bu">str</span>.contains(regex_pattern, na<span class="op">=</span><span class="va">False</span>, regex<span class="op">=</span><span class="va">True</span>)]</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="co"># We again use the filter_gdf custom function to exclude the far south extensions</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="co"># of Calvert St, which prevents the plot from getting too large</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>maxLat<span class="op">=</span><span class="fl">39.374446325282264</span></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>minLon<span class="op">=-</span><span class="fl">76.6587439176065</span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>minLat<span class="op">=</span><span class="fl">39.283440114622316</span></span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>maxLon<span class="op">=-</span><span class="fl">76.59163244865216</span></span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>street_sample <span class="op">=</span> filter_gdf(street_sample, minLat<span class="op">=</span>minLat, minLon<span class="op">=</span>minLon, maxLat<span class="op">=</span>maxLat, maxLon<span class="op">=</span>maxLon)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell" data-execution_count="7">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> geopandas <span class="im">as</span> gpd</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> shapely.geometry <span class="im">import</span> MultiLineString, LineString, Point</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> textwrap</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">15</span>, <span class="dv">15</span>))</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Walk through each street segment in street_sample and plot it on the map</span></span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> index, row <span class="kw">in</span> street_sample.iterrows():</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>    geom <span class="op">=</span> row.geometry</span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>    name <span class="op">=</span> row[<span class="st">'Name'</span>]</span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="bu">isinstance</span>(geom, LineString):</span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>        line_strings <span class="op">=</span> [geom]</span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>    <span class="cf">elif</span> <span class="bu">isinstance</span>(geom, MultiLineString):</span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>        line_strings <span class="op">=</span> geom</span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> line <span class="kw">in</span> line_strings:</span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>        x, y <span class="op">=</span> line.xy</span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a>        ax.plot(x, y, color<span class="op">=</span><span class="st">'lightblue'</span>, alpha<span class="op">=</span><span class="fl">0.7</span>, linewidth<span class="op">=</span><span class="dv">3</span>, solid_capstyle<span class="op">=</span><span class="st">'round'</span>, zorder<span class="op">=</span><span class="dv">2</span>)</span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a>        ax.plot(x[<span class="dv">0</span>], y[<span class="dv">0</span>], <span class="st">'o'</span>, color<span class="op">=</span><span class="st">'gray'</span>, alpha<span class="op">=</span><span class="fl">0.5</span>)    <span class="co"># Segment start point</span></span>
+<span id="cb7-23"><a href="#cb7-23" aria-hidden="true" tabindex="-1"></a>        ax.plot(x[<span class="op">-</span><span class="dv">1</span>], y[<span class="op">-</span><span class="dv">1</span>], <span class="st">'o'</span>, color<span class="op">=</span><span class="st">'gray'</span>, alpha<span class="op">=</span><span class="fl">0.5</span>)  <span class="co"># Segment end point</span></span>
+<span id="cb7-24"><a href="#cb7-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a>        centroid <span class="op">=</span> line.centroid</span>
+<span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a>        name <span class="op">=</span> <span class="ss">f'</span><span class="sc">{</span>name<span class="sc">}</span><span class="ss"> </span><span class="sc">{</span>row[<span class="st">"geometry"</span>]<span class="sc">.</span>length<span class="sc">:.0f}</span><span class="ss">m'</span></span>
+<span id="cb7-27"><a href="#cb7-27" aria-hidden="true" tabindex="-1"></a>        ax.text(centroid.x, centroid.y, name, fontsize<span class="op">=</span><span class="dv">8</span>, ha<span class="op">=</span><span class="st">'center'</span>)</span>
+<span id="cb7-28"><a href="#cb7-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-29"><a href="#cb7-29" aria-hidden="true" tabindex="-1"></a>ax.set_title(<span class="st">'Street Sample Distances'</span>, fontsize<span class="op">=</span><span class="dv">24</span>, fontweight<span class="op">=</span><span class="st">'bold'</span>, fontname<span class="op">=</span><span class="st">'Arial'</span>)</span>
+<span id="cb7-30"><a href="#cb7-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-31"><a href="#cb7-31" aria-hidden="true" tabindex="-1"></a>note <span class="op">=</span> <span class="st">'''Some street segments are fairly long, which will impact our accuracy in some cases.</span></span>
+<span id="cb7-32"><a href="#cb7-32" aria-hidden="true" tabindex="-1"></a><span class="st">I tried several methods to split up longer segments, but all of them caused problems with geometry,</span></span>
+<span id="cb7-33"><a href="#cb7-33" aria-hidden="true" tabindex="-1"></a><span class="st">such as disturbing intersections. This will be addressed in a future iteration of the project.</span></span>
+<span id="cb7-34"><a href="#cb7-34" aria-hidden="true" tabindex="-1"></a><span class="st">'''</span></span>
+<span id="cb7-35"><a href="#cb7-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-36"><a href="#cb7-36" aria-hidden="true" tabindex="-1"></a><span class="co"># remove newlines and extra spaces from note</span></span>
+<span id="cb7-37"><a href="#cb7-37" aria-hidden="true" tabindex="-1"></a>note <span class="op">=</span> re.sub(<span class="vs">r'\s+'</span>, <span class="st">' '</span>, note).strip()</span>
+<span id="cb7-38"><a href="#cb7-38" aria-hidden="true" tabindex="-1"></a>wrapped_text <span class="op">=</span> textwrap.fill(note, width<span class="op">=</span><span class="dv">40</span>)</span>
+<span id="cb7-39"><a href="#cb7-39" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-40"><a href="#cb7-40" aria-hidden="true" tabindex="-1"></a>ax.text(<span class="fl">0.05</span>, <span class="fl">0.95</span>, wrapped_text, transform<span class="op">=</span>ax.transAxes, fontsize<span class="op">=</span><span class="dv">16</span>,</span>
+<span id="cb7-41"><a href="#cb7-41" aria-hidden="true" tabindex="-1"></a>        verticalalignment<span class="op">=</span><span class="st">'top'</span>, wrap<span class="op">=</span><span class="va">True</span>, </span>
+<span id="cb7-42"><a href="#cb7-42" aria-hidden="true" tabindex="-1"></a>        bbox<span class="op">=</span><span class="bu">dict</span>(boxstyle<span class="op">=</span><span class="st">'round,pad=0.5'</span>, facecolor<span class="op">=</span><span class="st">'lightgray'</span>, edgecolor<span class="op">=</span><span class="st">'none'</span>, alpha<span class="op">=</span><span class="fl">0.5</span>))</span>
+<span id="cb7-43"><a href="#cb7-43" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-44"><a href="#cb7-44" aria-hidden="true" tabindex="-1"></a>ax.set_xticks([])</span>
+<span id="cb7-45"><a href="#cb7-45" aria-hidden="true" tabindex="-1"></a>ax.set_yticks([])</span>
+<span id="cb7-46"><a href="#cb7-46" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-47"><a href="#cb7-47" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-display">
+<p><img src="street_graph_feature_engineering_files/figure-html/cell-8-output-1.png" class="img-fluid"></p>
+</div>
+</div>
+</section>
+<section id="create-a-sample-street-graph" class="level2" data-number="5">
+<h2 data-number="5" class="anchored" data-anchor-id="create-a-sample-street-graph"><span class="header-section-number">5</span> Create a Sample Street Graph</h2>
+<p>The GLDNet architecture views the city as a graph representing street segments as nodes connected with edges. Each edge represents an intersection between street segment nodes, and each edge is described by a weight<a href="#fn6" class="footnote-ref" id="fnref6" role="doc-noteref"><sup>6</sup></a> indicating how closely connected the streets are.</p>
+<p>In the code below, <code>alpha</code> is a <a href="https://en.wikipedia.org/wiki/Hyperparameter_(machine_learning)">hyperparameter</a> that affects the model training process. It controls the rate of decay of the edge weights as the network distance<a href="#fn7" class="footnote-ref" id="fnref7" role="doc-noteref"><sup>7</sup></a> between two intersecting street segments increases.</p>
+<p>A higher value of <code>alpha</code> will result in a slower decay rate, meaning that for higher values, the weights will decrease more slowly as the distance between two intersection streets inreases. I chose <code>750</code> as a starting point through trial and error, but we will need to do hyperparameter tuning experiments to find the most optimal value<a href="#fn8" class="footnote-ref" id="fnref8" role="doc-noteref"><sup>8</sup></a>.</p>
+<div class="cell" data-execution_count="8">
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># create_network_graph() is a custom function defined in the lib/ directory</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lib.graphs <span class="im">import</span> create_network_graph</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> re</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> warnings</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a><span class="co"># there is a slight inconsistency for one intersection that we can safely ignore</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>warnings.filterwarnings(<span class="st">'ignore'</span>) <span class="co"># there is a slight inconsistency for one intersection that we can safely ignore</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a><span class="co"># The variable G will contain the network graph of nodes and edges</span></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>G <span class="op">=</span> create_network_graph(street_sample, alpha<span class="op">=</span><span class="dv">750</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Here we print some basic facts about the graph, and show a sample of what the data looks like so far:</p>
+<div class="cell" data-execution_count="9">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(G)</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>first_few_nodes <span class="op">=</span> G.nodes.data()</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> node <span class="kw">in</span> first_few_nodes:</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(node)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>Graph with 8 nodes and 7 edges
+(71, {'name': 'N CALVERT ST', 'position': (433234.76449570275, 184903.13711894283)})
+(460, {'name': 'W BALTIMORE ST', 'position': (433035.4508496049, 180198.99369446136)})
+(1094, {'name': 'E BALTIMORE ST', 'position': (435451.27511434647, 180441.2195487497)})
+(1175, {'name': 'W BALTIMORE ST', 'position': (430707.4139727321, 180056.19193840865)})
+(3314, {'name': 'SOUTH ST', 'position': (433572.47103290143, 180068.17071845438)})
+(4740, {'name': 'N CALVERT ST', 'position': (433248.1671875986, 183714.82279332186)})
+(4886, {'name': 'CALVERT ST', 'position': (433307.6642518902, 182623.34583798377)})
+(4920, {'name': 'CALVERT ST', 'position': (433385.9678910779, 181250.26493673338)})</code></pre>
+</div>
+</div>
+</section>
+<section id="plot-street-sample-network-graph" class="level2" data-number="6">
+<h2 data-number="6" class="anchored" data-anchor-id="plot-street-sample-network-graph"><span class="header-section-number">6</span> Plot Street Sample Network Graph</h2>
+<div class="cell" data-execution_count="10">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># custom drawing function defined in the lib/ directory</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lib.plots <span class="im">import</span> plot_nodes_and_edges</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> matplotlib <span class="im">import</span> pyplot <span class="im">as</span> plt</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>plt.close()</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">15</span>,<span class="dv">10</span>))</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>plt.title(<span class="st">"Street Segment Subgraph with Edge Weights"</span>, fontsize<span class="op">=</span><span class="dv">24</span>, fontweight<span class="op">=</span><span class="st">'bold'</span>, fontname<span class="op">=</span><span class="st">'Arial'</span>)</span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>note <span class="op">=</span> <span class="st">'''Each edge is labeled with the network distance weight and</span></span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a><span class="st">the actual distance in meters.'''</span></span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>note <span class="op">=</span> re.sub(<span class="vs">r'\s+'</span>, <span class="st">' '</span>, note).strip()</span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>wrapped_text <span class="op">=</span> textwrap.fill(note, width<span class="op">=</span><span class="dv">50</span>)</span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a>wrapped_text <span class="op">=</span> wrapped_text <span class="op">+</span> <span class="st">'</span><span class="ch">\n\n</span><span class="st">This is a graph view depicting the street network as</span><span class="ch">\n</span><span class="st">'</span> \</span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a>        <span class="st">'the deep learning model will perceive it.'</span></span>
+<span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-20"><a href="#cb11-20" aria-hidden="true" tabindex="-1"></a>ax.text(<span class="fl">0.02</span>, <span class="fl">0.96</span>, wrapped_text, transform<span class="op">=</span>ax.transAxes, fontsize<span class="op">=</span><span class="dv">18</span>,</span>
+<span id="cb11-21"><a href="#cb11-21" aria-hidden="true" tabindex="-1"></a>        verticalalignment<span class="op">=</span><span class="st">'top'</span>, wrap<span class="op">=</span><span class="va">True</span>, </span>
+<span id="cb11-22"><a href="#cb11-22" aria-hidden="true" tabindex="-1"></a>        bbox<span class="op">=</span><span class="bu">dict</span>(boxstyle<span class="op">=</span><span class="st">'round,pad=0.5'</span>, facecolor<span class="op">=</span><span class="st">'lightgray'</span>, edgecolor<span class="op">=</span><span class="st">'none'</span>, alpha<span class="op">=</span><span class="fl">0.5</span>))</span>
+<span id="cb11-23"><a href="#cb11-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-24"><a href="#cb11-24" aria-hidden="true" tabindex="-1"></a>plot_nodes_and_edges(G, plt, fig, ax, <span class="dv">100</span>)</span>
+<span id="cb11-25"><a href="#cb11-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-26"><a href="#cb11-26" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-display">
+<p><img src="street_graph_feature_engineering_files/figure-html/cell-11-output-1.png" class="img-fluid"></p>
+</div>
+</div>
+<p>The edge weights look fairly reasonable, with shorter segments having much higher weights than longer segments. You can see that where longer spans of streets intersect, the weights are much weaker, which is why in the future we’ll want to find smart ways to break up longer segments.</p>
+</section>
+<section id="create-the-full-street-graph-for-model-training" class="level2" data-number="7">
+<h2 data-number="7" class="anchored" data-anchor-id="create-the-full-street-graph-for-model-training"><span class="header-section-number">7</span> Create the Full Street Graph for Model Training</h2>
+<p>Using the entire set of streets for the city would require too much time and computational power for this experiment, so we instead focus on a broad swath of streets running west-to-east across the city’s core.</p>
+<div class="cell" data-execution_count="11">
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lib.geo_utils <span class="im">import</span> filter_gdf, make_bounding_box</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Set the coordinates for a bounding box limiting our street segments to a strip of</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a><span class="co"># streets on either side of downtown Baltimore</span></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>minLat<span class="op">=</span><span class="fl">39.281302796434016</span></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>minLon<span class="op">=-</span><span class="fl">76.665</span></span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>maxLat<span class="op">=</span><span class="fl">39.299</span></span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>maxLon<span class="op">=-</span><span class="fl">76.575</span></span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Exclude street segments outside of the bounding box</span></span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>central_baltimore_subset <span class="op">=</span> filter_gdf(streets_gdf, minLat<span class="op">=</span>minLat, minLon<span class="op">=</span>minLon, maxLat<span class="op">=</span>maxLat, maxLon<span class="op">=</span>maxLon)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="plot-the-full-street-graph" class="level2" data-number="8">
+<h2 data-number="8" class="anchored" data-anchor-id="plot-the-full-street-graph"><span class="header-section-number">8</span> Plot the Full Street Graph</h2>
+<p>Just as we did with the sample, we plot the full street graph to make sure it looks reasonable.</p>
+<div class="cell" data-execution_count="12">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lib.geo_utils <span class="im">import</span> filter_gdf, make_bounding_box</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot the remaining streets</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">20</span>,<span class="dv">15</span>))</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>central_baltimore_subset.plot(ax<span class="op">=</span>ax)</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Because longer streets extend past the bounding box, we use the same bounding coordinates</span></span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a><span class="co"># to limit the borders of the plot. It's confusing if we draw parts of the street segments</span></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a><span class="co"># that will be excluded from training</span></span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>central_baltimore_bounding_box <span class="op">=</span> make_bounding_box(minLat<span class="op">=</span>minLat, minLon<span class="op">=</span>minLon, maxLat<span class="op">=</span>maxLat, maxLon<span class="op">=</span>maxLon)</span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>min_x, min_y, max_x, max_y <span class="op">=</span> central_baltimore_bounding_box.bounds</span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a><span class="co"># Spherical coordinates for the center of Baltimore</span></span>
+<span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a>latitude <span class="op">=</span> <span class="fl">39.289444</span></span>
+<span id="cb13-16"><a href="#cb13-16" aria-hidden="true" tabindex="-1"></a>longitude <span class="op">=</span> <span class="op">-</span><span class="fl">76.616667</span></span>
+<span id="cb13-17"><a href="#cb13-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-18"><a href="#cb13-18" aria-hidden="true" tabindex="-1"></a>center_point <span class="op">=</span> Point(longitude, latitude)</span>
+<span id="cb13-19"><a href="#cb13-19" aria-hidden="true" tabindex="-1"></a>center_point <span class="op">=</span> gpd.GeoSeries(center_point, crs<span class="op">=</span><span class="st">'EPSG:4326'</span>)</span>
+<span id="cb13-20"><a href="#cb13-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-21"><a href="#cb13-21" aria-hidden="true" tabindex="-1"></a><span class="co"># Convert center_point to the Maryland State Plane coordinate system</span></span>
+<span id="cb13-22"><a href="#cb13-22" aria-hidden="true" tabindex="-1"></a>center_point <span class="op">=</span> center_point.to_crs(epsg<span class="op">=</span><span class="dv">26985</span>)</span>
+<span id="cb13-23"><a href="#cb13-23" aria-hidden="true" tabindex="-1"></a>center_point <span class="op">=</span> center_point.centroid</span>
+<span id="cb13-24"><a href="#cb13-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-25"><a href="#cb13-25" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot center_point as a red dot</span></span>
+<span id="cb13-26"><a href="#cb13-26" aria-hidden="true" tabindex="-1"></a>ax.plot(center_point.x, center_point.y, <span class="st">'o'</span>, color<span class="op">=</span><span class="st">'red'</span>)</span>
+<span id="cb13-27"><a href="#cb13-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-28"><a href="#cb13-28" aria-hidden="true" tabindex="-1"></a><span class="co"># write 'Center of Baltimore' below the red dot</span></span>
+<span id="cb13-29"><a href="#cb13-29" aria-hidden="true" tabindex="-1"></a>ax.text(center_point.x, center_point.y <span class="op">-</span> <span class="dv">100</span>, <span class="st">'City</span><span class="ch">\n</span><span class="st">Center'</span>, fontsize<span class="op">=</span><span class="dv">16</span>, ha<span class="op">=</span><span class="st">'center'</span>, fontweight<span class="op">=</span><span class="st">'bold'</span>)</span>
+<span id="cb13-30"><a href="#cb13-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-31"><a href="#cb13-31" aria-hidden="true" tabindex="-1"></a>ax.set_xlim(min_x, max_x)</span>
+<span id="cb13-32"><a href="#cb13-32" aria-hidden="true" tabindex="-1"></a>ax.set_ylim(min_y, max_y)</span>
+<span id="cb13-33"><a href="#cb13-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-34"><a href="#cb13-34" aria-hidden="true" tabindex="-1"></a>plt.title(<span class="st">'Central Baltimore Streets'</span>, fontsize<span class="op">=</span><span class="dv">24</span>)</span>
+<span id="cb13-35"><a href="#cb13-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-36"><a href="#cb13-36" aria-hidden="true" tabindex="-1"></a>ax.set_xticks([])</span>
+<span id="cb13-37"><a href="#cb13-37" aria-hidden="true" tabindex="-1"></a>ax.set_yticks([])</span>
+<span id="cb13-38"><a href="#cb13-38" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-39"><a href="#cb13-39" aria-hidden="true" tabindex="-1"></a>plt.show()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-display">
+<p><img src="street_graph_feature_engineering_files/figure-html/cell-13-output-1.png" class="img-fluid"></p>
+</div>
+</div>
+<p>The central Baltimore subset looks OK, so we proceed to create the network graph, as we did with the sample.</p>
+<div class="cell" data-execution_count="13">
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>G <span class="op">=</span> create_network_graph(central_baltimore_subset, alpha<span class="op">=</span><span class="dv">750</span>)</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(G)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Graph with 766 nodes and 2395 edges</code></pre>
+</div>
+</div>
+</section>
+<section id="save-the-graph-to-disk" class="level2" data-number="9">
+<h2 data-number="9" class="anchored" data-anchor-id="save-the-graph-to-disk"><span class="header-section-number">9</span> Save the Graph to Disk</h2>
+<p>We persist the street graph to a file. During model training, the file will be loaded and used to represent the locations of crime events.</p>
+<div class="cell" data-execution_count="14">
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> json</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> networkx.readwrite <span class="im">import</span> json_graph</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>data <span class="op">=</span> json_graph.node_link_data(G)</span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> <span class="bu">open</span>(<span class="st">'../../data/processed/baltimore_street_graph.json'</span>, <span class="st">'w'</span>) <span class="im">as</span> f:</span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>    json.dump(data, f)</span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">'Graph saved to ../../data/processed/baltimore_street_graph.json'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Graph saved to ../../data/processed/baltimore_street_graph.json</code></pre>
+</div>
+</div>
+</section>
+<section id="up-next" class="level2 unnumbered">
+<h2 class="unnumbered anchored" data-anchor-id="up-next">Up Next</h2>
+<p>We will perform Feature Engineering for the crime events, matching each event with a node in the street graph. Stay tuned for Part 2!</p>
+</section>
+
+
+<div id="quarto-appendix" class="default"><section id="footnotes" class="footnotes footnotes-end-of-document" role="doc-endnotes"><h2 class="anchored quarto-appendix-heading">Footnotes</h2>
+
+<ol>
+<li id="fn1"><p>Gated Localised Diffusion<a href="#fnref1" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn2"><p>Work-in-Progress<a href="#fnref2" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn3"><p>Geographic Information System<a href="#fnref3" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn4"><p>Known as the WGS84 coordinate reference system<a href="#fnref4" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn5"><p>Euclidean<a href="#fnref5" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn6"><p>Using an exponentially-decaying Gaussian kernel function to e­valuate the similarity betwe­en two points, as described in the GLDnet paper<a href="#fnref6" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn7"><p>The distance between the center of each street, if you walked along each street<a href="#fnref7" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+<li id="fn8"><p>In the original GLDNet paper, the authors used a value of 5. <code>alpha</code> is likely sensitive to the geometry of the city being modeled.<a href="#fnref8" class="footnote-back" role="doc-backlink">↩︎</a></p></li>
+</ol>
+</section><section class="quarto-appendix-contents"><h2 class="anchored quarto-appendix-heading">Reuse</h2><div id="quarto-reuse" class="quarto-appendix-contents"><div>CC BY-NC-SA 4.0</div></div></section></div></main>
+<!-- /main column -->
+<nav id="header-ribbon" class="footer p-1">
+    <a href="/">Home</a>
+    <span class="divider">|</span>
+    <a href="mailto:contact@subelsky.com?subject=Hello%20Mike">Contact</a>
+</nav>
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    text: function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+</body></html>

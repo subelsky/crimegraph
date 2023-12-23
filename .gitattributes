@@ -1,0 +1,5 @@
+*.zip filter=lfs diff=lfs merge=lfs -text
+data/processed/baltimore_street_graph.json filter=lfs diff=lfs merge=lfs -text
+*.gz filter=lfs diff=lfs merge=lfs -text
+data/city_geography filter=lfs diff=lfs merge=lfs -text
+*.ipynb filter=lfs diff=lfs merge=lfs -text

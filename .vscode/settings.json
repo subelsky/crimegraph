@@ -1,0 +1,4 @@
+{
+    "quarto.render.renderOnSaveShiny": false,
+    "quarto.render.previewReveal": false
+}
