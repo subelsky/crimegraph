@@ -33,4 +33,4 @@ The project is written in Python 3.10 and uses these libraries:
 
 ## Questions
 
-Email me at [contact@subelsky.com].
+Email me at contact@subelsky.com.
