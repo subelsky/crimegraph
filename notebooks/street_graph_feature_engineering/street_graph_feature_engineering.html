@@ -10,7 +10,7 @@
 <meta name="dcterms.date" content="2024-01-10">
 <meta name="keywords" content="graph deep learning, gis, gldNET, crime forecasting, machine learning">
 
-<title>CrimeGraph WIP: Feature Engineering the Street Graph</title>
+<title>CrimeGraph: Feature Engineering the Street Graph</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -127,7 +127,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">CrimeGraph WIP: Feature Engineering the Street Graph</h1>
+<h1 class="title">CrimeGraph: Feature Engineering the Street Graph</h1>
 </div>
 
 
@@ -157,9 +157,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="introduction" class="level2 unnumbered">
 <h2 class="unnumbered anchored" data-anchor-id="introduction">Introduction</h2>
 <p>In the CrimeGraph project, I will explore training a graph deep learning model to forecast the probability of crime events in the City of Baltimore, using data provided by <a href="https://spotcrime.com/#what-is-spotcrime">SpotCrime</a>. SpotCrime maintains a uniquely comprehensive database of geo-coded crime reports obtained from public safety databases and news reports from across the country. They were kind enough to grant me access to 23 years of data documenting crime events in the Baltimore.</p>
-<p>I plan to adopt the GLDNet<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a> architecture described in the 2020 paper <em><a href="https://discovery.ucl.ac.uk/id/eprint/10085742/">Graph Deep Learning Model for Network-based Predictive Hotspot Mapping of Sparse Spatio-Temporal Events</a></em>.</p>
-<p>Models with this design can learn from the spatial patterns of crime events by representing intersecting city streets as a graph of nodes and edges.</p>
+<p>I plan to adopt the GLDNet<a href="#fn1" class="footnote-ref" id="fnref1" role="doc-noteref"><sup>1</sup></a> architecture described in the 2020 paper <em><a href="https://discovery.ucl.ac.uk/id/eprint/10085742/">Graph Deep Learning Model for Network-based Predictive Hotspot Mapping of Sparse Spatio-Temporal Events</a></em>. Models with this design can learn from the spatial patterns of crime events by representing intersecting city streets as a graph of nodes and edges.</p>
 <p>In this WIP<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a> notebook, we’ll use geographic data to prepare the street graph, as part of a process known as ‘feature engineering’. In a future notebook, we will perform feature engineering of the SpotCrime data itself.</p>
+<p>The code is available on <a href="https://github.com/subelsky/crimegraph">GitHub</a>.</p>
 </section>
 <section id="ai-safety-caveat" class="level2 unnumbered">
 <h2 class="unnumbered anchored" data-anchor-id="ai-safety-caveat">AI Safety Caveat</h2>
@@ -390,7 +390,7 @@ Caution
 <h2 data-number="5" class="anchored" data-anchor-id="create-a-sample-street-graph"><span class="header-section-number">5</span> Create a Sample Street Graph</h2>
 <p>The GLDNet architecture views the city as a graph representing street segments as nodes connected with edges. Each edge represents an intersection between street segment nodes, and each edge is described by a weight<a href="#fn6" class="footnote-ref" id="fnref6" role="doc-noteref"><sup>6</sup></a> indicating how closely connected the streets are.</p>
 <p>In the code below, <code>alpha</code> is a <a href="https://en.wikipedia.org/wiki/Hyperparameter_(machine_learning)">hyperparameter</a> that affects the model training process. It controls the rate of decay of the edge weights as the network distance<a href="#fn7" class="footnote-ref" id="fnref7" role="doc-noteref"><sup>7</sup></a> between two intersecting street segments increases.</p>
-<p>A higher value of <code>alpha</code> will result in a slower decay rate, meaning that for higher values, the weights will decrease more slowly as the distance between two intersection streets inreases. I chose <code>750</code> as a starting point through trial and error, but we will need to do hyperparameter tuning experiments to find the most optimal value<a href="#fn8" class="footnote-ref" id="fnref8" role="doc-noteref"><sup>8</sup></a>.</p>
+<p>A higher value of <code>alpha</code> will result in a slower decay rate, meaning that for higher values, the weights will decrease more slowly as the distance between two intersection streets increases. I chose <code>750</code> as a starting point through trial and error, but we will need to do hyperparameter tuning experiments to find the most optimal value<a href="#fn8" class="footnote-ref" id="fnref8" role="doc-noteref"><sup>8</sup></a>. See the <a href="https://github.com/subelsky/crimegraph/blob/main/notebooks/street_graph_feature_engineering/lib/graphs.py">GitHub</a> repository to see how <code>create_networkx_graph()</code> works.</p>
 <div class="cell" data-execution_count="8">
 <div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># create_network_graph() is a custom function defined in the lib/ directory</span></span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lib.graphs <span class="im">import</span> create_network_graph</span>
@@ -545,7 +545,7 @@ Caution
 </section>
 <section id="save-the-graph-to-disk" class="level2" data-number="9">
 <h2 data-number="9" class="anchored" data-anchor-id="save-the-graph-to-disk"><span class="header-section-number">9</span> Save the Graph to Disk</h2>
-<p>We persist the street graph to a file. During model training, the file will be loaded and used to represent the locations of crime events.</p>
+<p>Finally, we save the street graph to a JSON file. During model training, the file will be loaded and used to map the locations of crime events.</p>
 <div class="cell" data-execution_count="14">
 <div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> json</span>
 <span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> networkx.readwrite <span class="im">import</span> json_graph</span>
