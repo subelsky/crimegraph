@@ -154,5 +154,5 @@ logs/
 *.log
 tmp/
 data/spotcrime/
-data/processed/timesteps.csv.gz
+data/processed/
 archive/
