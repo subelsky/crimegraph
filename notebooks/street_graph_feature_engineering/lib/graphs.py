@@ -39,8 +39,10 @@ def create_network_graph(gdf, alpha=DEFAULT_ALPHA):
     weight_calculator = create_weight_calculator(alpha)
 
     for index, row in gdf.iterrows():
-        # Use the index of the GeoDataFrame as the node identifier
-        G.add_node(index, name=row['Name'], position=row['geometry'].centroid.coords[0])
+        # Use the index of the GeoDataFrame as the main node identifier; NodeID is the ID of the street
+        # segment in the original street network geodataframe, which we can use to map predictions back
+        # onto a map of the city
+        G.add_node(index, NodeID=row['NodeID'], name=row['Name'], position=row['geometry'].centroid.coords[0])
 
     # Create a dictionary to keep track of the nodes connected by an intersection
     intersections = {}
