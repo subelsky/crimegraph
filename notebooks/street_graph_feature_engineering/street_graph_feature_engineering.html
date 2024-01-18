@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Mike Subelsky">
-<meta name="dcterms.date" content="2024-01-10">
+<meta name="dcterms.date" content="2024-01-18">
 <meta name="keywords" content="graph deep learning, gis, gldNET, crime forecasting, machine learning">
 
 <title>CrimeGraph: Feature Engineering the Street Graph</title>
@@ -72,27 +72,44 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="street_graph_feature_engineering_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&amp;display=swap&amp;text=Home%20Contact" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&amp;display=swap" rel="stylesheet">
 
 <style>
-    nav#header-ribbon {
+    #header {
         background-color: #070707; /* Rich Black FOGRA 39 */
         font-family: 'Orbitron', 'Arial', sans-serif;
     }
 
-    nav#header-ribbon a {
+    #header a {
         color: #b7fdfe;
     }
 
-    .footer {
-        text-align: center;
+    #header ul.dropdown-menu {
+        background-color: #070707;
+    }
+
+    #header a.disabled {
+        color: #b7fdfe;
+        opacity: 0.5;
     }
 </style>
-</head><body><nav id="header-ribbon" class="p-1">
-    <a href="/">Home</a>
-    <span class="divider">|</span>
-    <a href="mailto:contact@subelsky.com?subject=Hello%20Mike">Contact</a>
-</nav>
+</head><body><ul class="nav justify-content-center nav-fill p-1" id="header">
+  <li class="nav-item">
+    <a class="nav-link" href="/crimegraph">
+      Home
+    </a>
+  </li>
+
+  <li class="nav-item dropdown">
+    <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-expanded="false">Chapters</a>
+    <ul class="dropdown-menu">
+      <li><a class="dropdown-item active" aria-current="page" href="#">Part 1</a></li>
+      <li><a class="dropdown-item" href="../event_timestep_feature_engineering/">Part 2</a></li>
+      <li><hr class="dropdown-divider"></li>
+      <li><a class="dropdown-item disabled" aria-disabled="true" href="#">Part 3 (WIP)</a></li>
+    </ul>
+  </li>
+</ul>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" integrity="sha512-c3Nl8+7g4LMSTdrm621y7kf9v3SDPnhxLNhcjFJbKECVnmZHTdo+IRO05sNLTH/D3vA6u1X32ehoLC7WFVdheg==" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script>
 <script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
@@ -119,6 +136,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#create-the-full-street-graph-for-model-training" id="toc-create-the-full-street-graph-for-model-training" class="nav-link" data-scroll-target="#create-the-full-street-graph-for-model-training"><span class="header-section-number">7</span> Create the Full Street Graph for Model Training</a></li>
   <li><a href="#plot-the-full-street-graph" id="toc-plot-the-full-street-graph" class="nav-link" data-scroll-target="#plot-the-full-street-graph"><span class="header-section-number">8</span> Plot the Full Street Graph</a></li>
   <li><a href="#save-the-graph-to-disk" id="toc-save-the-graph-to-disk" class="nav-link" data-scroll-target="#save-the-graph-to-disk"><span class="header-section-number">9</span> Save the Graph to Disk</a></li>
+  <li><a href="#save-the-streets-geographic-data-to-disk" id="toc-save-the-streets-geographic-data-to-disk" class="nav-link" data-scroll-target="#save-the-streets-geographic-data-to-disk"><span class="header-section-number">10</span> Save the Streets Geographic Data to Disk</a></li>
   <li><a href="#up-next" id="toc-up-next" class="nav-link" data-scroll-target="#up-next">Up Next</a></li>
   </ul>
 </nav>
@@ -144,7 +162,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">January 10, 2024</p>
+      <p class="date">January 18, 2024</p>
     </div>
   </div>
   
@@ -274,7 +292,57 @@ Caution
 <span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="co"># 3. Use the custom function to exclude streets (the function converts spherical</span></span>
 <span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="co">#    coordinates to the Maryland State Plane coordinate system automatically)</span></span>
 <span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>streets_gdf <span class="op">=</span> filter_gdf(streets_gdf, minLat<span class="op">=</span>minLat, minLon<span class="op">=</span>minLon, maxLat<span class="op">=</span>maxLat, maxLon<span class="op">=</span>maxLon)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>streets_gdf <span class="op">=</span> filter_gdf(streets_gdf, minLat<span class="op">=</span>minLat, minLon<span class="op">=</span>minLon, maxLat<span class="op">=</span>maxLat, maxLon<span class="op">=</span>maxLon)</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>streets_gdf.head()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-display" data-execution_count="4">
+<div>
+
+
+<table class="dataframe table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
+<thead>
+<tr class="header">
+<th data-quarto-table-cell-role="th"></th>
+<th data-quarto-table-cell-role="th">NodeID</th>
+<th data-quarto-table-cell-role="th">Name</th>
+<th data-quarto-table-cell-role="th">geometry</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">0</td>
+<td>367091</td>
+<td>HAMPNETT AV</td>
+<td>LINESTRING Z (437097.924 186262.548 0.000, 437...</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1</td>
+<td>367095</td>
+<td>RASPE AV</td>
+<td>LINESTRING Z (439591.312 187041.316 0.000, 439...</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">2</td>
+<td>367101</td>
+<td>CARBORE WY</td>
+<td>LINESTRING Z (439647.748 179306.321 0.000, 439...</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">3</td>
+<td>367108</td>
+<td>LAKEHURST DR (NB/L)</td>
+<td>LINESTRING Z (431231.983 189327.930 0.000, 431...</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">4</td>
+<td>367122</td>
+<td>BANK ST</td>
+<td>LINESTRING Z (440417.241 180192.691 0.000, 440...</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
 </div>
 </section>
 <section id="plot-filtered-street-segments" class="level2" data-number="3">
@@ -416,14 +484,14 @@ Caution
 </details>
 <div class="cell-output cell-output-stdout">
 <pre><code>Graph with 8 nodes and 7 edges
-(71, {'name': 'N CALVERT ST', 'position': (433234.76449570275, 184903.13711894283)})
-(460, {'name': 'W BALTIMORE ST', 'position': (433035.4508496049, 180198.99369446136)})
-(1094, {'name': 'E BALTIMORE ST', 'position': (435451.27511434647, 180441.2195487497)})
-(1175, {'name': 'W BALTIMORE ST', 'position': (430707.4139727321, 180056.19193840865)})
-(3314, {'name': 'SOUTH ST', 'position': (433572.47103290143, 180068.17071845438)})
-(4740, {'name': 'N CALVERT ST', 'position': (433248.1671875986, 183714.82279332186)})
-(4886, {'name': 'CALVERT ST', 'position': (433307.6642518902, 182623.34583798377)})
-(4920, {'name': 'CALVERT ST', 'position': (433385.9678910779, 181250.26493673338)})</code></pre>
+(71, {'NodeID': 368270, 'name': 'N CALVERT ST', 'position': (433234.76449570275, 184903.13711894283)})
+(460, {'NodeID': 375575, 'name': 'W BALTIMORE ST', 'position': (433035.4508496049, 180198.99369446136)})
+(1094, {'NodeID': 387189, 'name': 'E BALTIMORE ST', 'position': (435451.27511434647, 180441.2195487497)})
+(1175, {'NodeID': 388713, 'name': 'W BALTIMORE ST', 'position': (430707.4139727321, 180056.19193840865)})
+(3314, {'NodeID': 428785, 'name': 'SOUTH ST', 'position': (433572.47103290143, 180068.17071845438)})
+(4740, {'NodeID': 450305, 'name': 'N CALVERT ST', 'position': (433248.1671875986, 183714.82279332186)})
+(4886, {'NodeID': 453672, 'name': 'CALVERT ST', 'position': (433307.6642518902, 182623.34583798377)})
+(4920, {'NodeID': 454701, 'name': 'CALVERT ST', 'position': (433385.9678910779, 181250.26493673338)})</code></pre>
 </div>
 </div>
 </section>
@@ -536,34 +604,61 @@ Caution
 </div>
 <p>The central Baltimore subset looks OK, so we proceed to create the network graph, as we did with the sample.</p>
 <div class="cell" data-execution_count="13">
-<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>G <span class="op">=</span> create_network_graph(central_baltimore_subset, alpha<span class="op">=</span><span class="dv">750</span>)</span>
-<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(G)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> importlib</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> lib.graphs</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>importlib.<span class="bu">reload</span>(lib.graphs)</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lib.graphs <span class="im">import</span> create_network_graph</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Use the row number of each street segment as its ID; the original</span></span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a><span class="co"># index numbers are not sequential, since we filtered the geodataframe</span></span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>central_baltimore_subset.reset_index(inplace<span class="op">=</span><span class="va">True</span>, drop<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>G <span class="op">=</span> create_network_graph(central_baltimore_subset, alpha<span class="op">=</span><span class="dv">750</span>)</span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(G)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>Graph with 766 nodes and 2395 edges</code></pre>
+</div>
+</div>
+<div class="cell" data-execution_count="14">
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> node <span class="kw">in</span> <span class="bu">list</span>(G.nodes.data())[<span class="va">None</span>:<span class="dv">5</span>:<span class="va">None</span>]:</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(node)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>(0, {'NodeID': 367225, 'name': 'N DUKELAND ST', 'position': (429023.8628222718, 181450.00684655222)})
+(1, {'NodeID': 367313, 'name': 'GREENMOUNT AVE', 'position': (433808.63742829155, 181873.77924021168)})
+(2, {'NodeID': 367428, 'name': 'S CURLEY ST', 'position': (436601.280827219, 180889.90036487588)})
+(3, {'NodeID': 368071, 'name': 'CHRISTIAN ST', 'position': (430246.3910939129, 179351.73809093094)})
+(4, {'NodeID': 368342, 'name': 'E WINE CT', 'position': (433246.963858756, 180159.531350441)})</code></pre>
 </div>
 </div>
 </section>
 <section id="save-the-graph-to-disk" class="level2" data-number="9">
 <h2 data-number="9" class="anchored" data-anchor-id="save-the-graph-to-disk"><span class="header-section-number">9</span> Save the Graph to Disk</h2>
 <p>Finally, we save the street graph to a JSON file. During model training, the file will be loaded and used to map the locations of crime events.</p>
-<div class="cell" data-execution_count="14">
-<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> json</span>
-<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> networkx.readwrite <span class="im">import</span> json_graph</span>
-<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>data <span class="op">=</span> json_graph.node_link_data(G)</span>
-<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> <span class="bu">open</span>(<span class="st">'../../data/processed/baltimore_street_graph.json'</span>, <span class="st">'w'</span>) <span class="im">as</span> f:</span>
-<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>    json.dump(data, f)</span>
-<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">'Graph saved to ../../data/processed/baltimore_street_graph.json'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell" data-execution_count="22">
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pickle</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> networkx <span class="im">as</span> nx</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>path <span class="op">=</span> <span class="st">'../../data/processed/baltimore_street_graph.gpickle'</span></span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> <span class="bu">open</span>(path, <span class="st">'wb'</span>) <span class="im">as</span> <span class="bu">file</span>:</span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>    pickle.dump(G, <span class="bu">file</span>)</span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f'Graph saved to </span><span class="sc">{</span>path<span class="sc">}</span><span class="ss">'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>Graph saved to ../../data/processed/baltimore_street_graph.json</code></pre>
+<pre><code>Graph saved to ../../data/processed/baltimore_street_graph.gpickle</code></pre>
 </div>
+</div>
+</section>
+<section id="save-the-streets-geographic-data-to-disk" class="level2" data-number="10">
+<h2 data-number="10" class="anchored" data-anchor-id="save-the-streets-geographic-data-to-disk"><span class="header-section-number">10</span> Save the Streets Geographic Data to Disk</h2>
+<div class="cell" data-execution_count="18">
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>central_baltimore_subset.to_file(<span class="st">'../../data/processed/central_baltimore_street_segments.json'</span>, driver<span class="op">=</span><span class="st">'GeoJSON'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
 <section id="up-next" class="level2 unnumbered">
 <h2 class="unnumbered anchored" data-anchor-id="up-next">Up Next</h2>
-<p>We will perform Feature Engineering for the crime events, matching each event with a node in the street graph. Stay tuned for Part 2!</p>
+<p>In <a href="../street_graph_feature_engineering/">part 2</a>, we perform feature engineering of the temporal dimension: matching each crime events with a node in the street graph for every timestep.</p>
 </section>
 
 
@@ -581,11 +676,6 @@ Caution
 </ol>
 </section><section class="quarto-appendix-contents"><h2 class="anchored quarto-appendix-heading">Reuse</h2><div id="quarto-reuse" class="quarto-appendix-contents"><div>CC BY-NC-SA 4.0</div></div></section></div></main>
 <!-- /main column -->
-<nav id="header-ribbon" class="footer p-1">
-    <a href="/">Home</a>
-    <span class="divider">|</span>
-    <a href="mailto:contact@subelsky.com?subject=Hello%20Mike">Contact</a>
-</nav>
 <script id="quarto-html-after-body" type="application/javascript">
 window.document.addEventListener("DOMContentLoaded", function (event) {
   const toggleBodyColorMode = (bsSheetEl) => {
