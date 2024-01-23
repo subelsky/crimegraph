@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Mike Subelsky">
-<meta name="dcterms.date" content="2024-01-18">
+<meta name="dcterms.date" content="2024-01-26">
 <meta name="keywords" content="graph deep learning, gis, gldNET, crime forecasting, machine learning">
 
 <title>CrimeGraph: Feature Engineering Crime Events</title>
@@ -70,6 +70,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="event_timestep_feature_engineering_files/libs/bootstrap/bootstrap.min.js"></script>
 <link href="event_timestep_feature_engineering_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
 <link href="event_timestep_feature_engineering_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" integrity="sha512-c3Nl8+7g4LMSTdrm621y7kf9v3SDPnhxLNhcjFJbKECVnmZHTdo+IRO05sNLTH/D3vA6u1X32ehoLC7WFVdheg==" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script>
+<script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&amp;display=swap" rel="stylesheet">
@@ -105,14 +108,13 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <ul class="dropdown-menu">
       <li><a class="dropdown-item" href="../street_graph_feature_engineering">Part 1</a></li>
       <li><a class="dropdown-item active" aria-current="page" href="#">Part 2</a></li>
+      <li><a class="dropdown-item" href="../model_development">Part 3</a></li>
       <li><hr class="dropdown-divider"></li>
-      <li><a class="dropdown-item disabled" aria-disabled="true" href="#">Part 3 (WIP)</a></li>
+      <li><a class="dropdown-item disabled" aria-disabled="true" href="#">Part 4 (coming soon)</a></li>
     </ul>
   </li>
 </ul>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" integrity="sha512-c3Nl8+7g4LMSTdrm621y7kf9v3SDPnhxLNhcjFJbKECVnmZHTdo+IRO05sNLTH/D3vA6u1X32ehoLC7WFVdheg==" crossorigin="anonymous"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script>
-<script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
+<meta name="image" property="og:image" content="https://www.subelsky.com/crimegraph/event_timestep_feature_engineering/event_timestep_feature_engineering_files/figure-html/cell-21-output-1.png">
 
 
 
@@ -163,7 +165,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">January 18, 2024</p>
+      <p class="date">January 26, 2024</p>
     </div>
   </div>
   
@@ -183,7 +185,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="load-the-event-data" class="level2" data-number="1">
 <h2 data-number="1" class="anchored" data-anchor-id="load-the-event-data"><span class="header-section-number">1</span> Load the Event Data</h2>
 <p>SpotCrime events were provided in CSV<a href="#fn2" class="footnote-ref" id="fnref2" role="doc-noteref"><sup>2</sup></a> format. The events were extracted from a variety of sources, including 911 reports and media reports. Each event includes several fields, but the ones of interest to us are <code>Date</code>, <code>Type</code>, <code>Latitude</code>, and <code>Longitude</code>.</p>
-<div class="cell" data-execution_count="48">
+<div class="cell" data-execution_count="2">
 <div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> os</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
@@ -227,7 +229,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 <p>Now we can remove extraneous columns - although some of these could be potentially useful as features for a future model. For example, <code>Description</code> could be analyzed using natural language processing techniques.</p>
-<div class="cell" data-execution_count="49">
+<div class="cell" data-execution_count="3">
 <div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>events.drop(columns<span class="op">=</span>[</span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    <span class="st">'ID'</span>, <span class="st">'Address'</span>, <span class="st">'City'</span>, <span class="st">'State'</span>, <span class="st">'Country'</span>, <span class="st">'Zip'</span>, <span class="st">'Description'</span>, <span class="st">'Case#'</span>, <span class="st">'Incident#'</span>, <span class="st">'Report#'</span>, <span class="st">'Call#'</span>,</span>
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">'Other#'</span>, <span class="st">'Link'</span>, <span class="st">'Source'</span>, <span class="st">'CallsForService'</span>, <span class="st">'NewsStory'</span></span>
@@ -238,7 +240,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 data-number="2" class="anchored" data-anchor-id="event-distribution-analysis"><span class="header-section-number">2</span> Event Distribution Analysis</h2>
 <p>Feature engineering is about carefully selecting which data channels to present the model, and which to discard. The signal from some channels may overwhelm the signal from other, more predictive channels, and every channel adds to both the complexity of the model and the cost of training.</p>
 <p>So far, we’ve already compressed the time dimension (stored in the <code>Date</code> column) into single-day timesteps. There are also channels for <code>Type</code>:</p>
-<div class="cell" data-execution_count="50">
+<div class="cell" data-execution_count="4">
 <details>
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
@@ -256,7 +258,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>If we were to use all nine categories, we would be presenting the model with a 9-dimensional feature vector<a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a> for each node on each day. This would be a very sparse representation, because most nodes will have zero events of a given type at any given timestep.</p>
 <p>We can reduce the dimensionality of the feature vector by combining categories that are similar: <code>Assault</code>, <code>Robbery</code>, and <code>Shooting</code> can be combined as type <code>Violent</code>, while <code>Arson</code>, <code>Burglary</code>, <code>Theft</code>, and <code>Vandalism</code> can be combined as feature <code>Property</code>.</p>
 <p><code>Arrest</code> seems worth preserving as a distinct feature, but the <code>Other</code> category is so general and dominant that it is not likely to be predictive of violence, so we can discard it. This would be a fruitful area for future experiments, perhaps by using natural language processing on the <code>Description</code> field of <code>Other</code> events to generate more specific classifications.</p>
-<div class="cell" data-execution_count="80">
+<div class="cell" data-execution_count="5">
 <div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Remove Other since it is generic and dominates the other categories</span></span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>events <span class="op">=</span> events[<span class="op">~</span>events[<span class="st">'Type'</span>].isin([<span class="st">'Other'</span>])]</span>
 <span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a></span>
@@ -273,7 +275,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <pre><code>1549308 primary events after filtering out "Other"</code></pre>
 </div>
 </div>
-<div class="cell" data-execution_count="52">
+<div class="cell" data-execution_count="6">
 <details>
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>events.value_counts(<span class="st">'Type'</span>).plot(kind<span class="op">=</span><span class="st">'bar'</span>, title<span class="op">=</span><span class="st">'Count by Event Type (2015-2021)'</span>)</span>
@@ -287,7 +289,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="build-event-geometry" class="level2" data-number="3">
 <h2 data-number="3" class="anchored" data-anchor-id="build-event-geometry"><span class="header-section-number">3</span> Build Event Geometry</h2>
 <p>The SpotCrime data includes <code>Latitude</code> and <code>Longitude</code> values as strings of of numbers. In order to assign crime events to a street segment, we need to convert those coordinates into a point geometry that can be used with our street graph. The <a href="https://geopandas.org/">geopandas</a> library provides a way to store the event data as geometric objects, in a <code>GeoDataFrame</code>.</p>
-<div class="cell" data-execution_count="53">
+<div class="cell" data-execution_count="7">
 <div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> geopandas <span class="im">as</span> gpd</span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> shapely.geometry <span class="im">import</span> Point</span>
 <span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a></span>
@@ -298,7 +300,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>events_gdf <span class="op">=</span> gpd.GeoDataFrame(events)</span>
 <span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>events_gdf.head()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-display" data-execution_count="53">
+<div class="cell-output cell-output-display" data-execution_count="7">
 <div>
 
 
@@ -349,14 +351,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 <p>The event locations are specified in spherical coordinates (hours/minutes/seconds), using a coordinate reference system called <a href="https://en.wikipedia.org/wiki/World_Geodetic_System">WGS84</a>, while the street graph we created in <a href="https://www.subelsky.com/crimegraph/street_graph_feature_engineering/">part 1</a> uses a planar coordinate reference system called <a href="https://epsg.io/26985">NAD83</a>. <code>NAD83</code> enables us to treat the city as a flat surface, so that we can compute linear distances in meters.</p>
-<div class="cell" data-execution_count="54">
+<div class="cell" data-execution_count="8">
 <div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Original SpotCrime coordinates given  WGS84, aka EPSG:4326 spherical coordinates</span></span>
 <span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>events_gdf.crs <span class="op">=</span> <span class="st">'EPSG:4326'</span></span>
 <span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Convert 'geometry' column to planar coordinates NAD 83 (aka EPSG:26985)</span></span>
 <span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>events_gdf <span class="op">=</span> events_gdf.to_crs(<span class="st">'EPSG:26985'</span>)</span>
 <span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>events_gdf.head()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-display" data-execution_count="54">
+<div class="cell-output cell-output-display" data-execution_count="8">
 <div>
 
 
@@ -409,22 +411,22 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="restrict-geographic-scope-of-events" class="level2" data-number="4">
 <h2 data-number="4" class="anchored" data-anchor-id="restrict-geographic-scope-of-events"><span class="header-section-number">4</span> Restrict Geographic Scope of Events</h2>
-<p>In part 1, we limited the scope of interest to a bounding box across the width of the center of the city, in order to reduce the computational demands of the experiment. In this step, we remove events that fall outside of that bounding box.</p>
-<div class="cell" data-execution_count="55">
+<p>In part 1, we limited the scope of interest to a bounding box across a swath of the city in order to reduce the computational demands of the experiment. In this step, we remove events that fall outside of that bounding box.</p>
+<div class="cell" data-execution_count="11">
 <div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lib.geo_utils <span class="im">import</span> filter_gdf</span>
 <span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="co"># this is the same box used to constrain the street graph in step 1</span></span>
-<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>minLat, minLon <span class="op">=</span> <span class="fl">39.281302796434016</span>, <span class="op">-</span><span class="fl">76.665</span></span>
-<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>maxLat, maxLon<span class="op">=</span><span class="fl">39.299</span>, <span class="op">-</span><span class="fl">76.575</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>minLat, maxLon <span class="op">=</span> <span class="fl">39.293781858831856</span>, <span class="op">-</span><span class="fl">76.61436168242447</span></span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>maxLat, minLon <span class="op">=</span> <span class="fl">39.354471979447325</span>, <span class="op">-</span><span class="fl">76.6798709073914</span></span>
 <span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>filtered_events_gdf <span class="op">=</span> filter_gdf(events_gdf, minLat<span class="op">=</span>minLat, minLon<span class="op">=</span>minLon, maxLat<span class="op">=</span>maxLat, maxLon<span class="op">=</span>maxLon)</span>
 <span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f'</span><span class="sc">{</span><span class="bu">len</span>(filtered_events_gdf)<span class="sc">}</span><span class="ss"> events in central Baltimore'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>341342 events in central Baltimore</code></pre>
+<pre><code>399255 events in central Baltimore</code></pre>
 </div>
 </div>
-<div class="cell" data-execution_count="56">
+<div class="cell" data-execution_count="12">
 <details>
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lib.plots <span class="im">import</span> plot_events_on_map</span>
@@ -439,14 +441,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="associate-crime-events-with-street-segment-nodes" class="level2" data-number="5">
 <h2 data-number="5" class="anchored" data-anchor-id="associate-crime-events-with-street-segment-nodes"><span class="header-section-number">5</span> Associate Crime Events With Street Segment Nodes</h2>
 <p>Now that we have a prepared a set of events with planar coordinates, we can use the street graph built in part 1 to associate events with nearby street segments.</p>
-<div class="cell" data-execution_count="57">
+<div class="cell" data-execution_count="13">
 <div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pickle</span>
 <span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> <span class="bu">open</span>(<span class="st">'../../data/processed/baltimore_street_graph.gpickle'</span>, <span class="st">'rb'</span>) <span class="im">as</span> <span class="bu">file</span>:</span>
 <span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>    G <span class="op">=</span> pickle.load(<span class="bu">file</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>The street segment nodes in the graph look like this:</p>
-<div class="cell" data-execution_count="58">
+<div class="cell" data-execution_count="14">
 <details>
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f'</span><span class="sc">{</span><span class="bu">len</span>(G)<span class="sc">}</span><span class="ss"> nodes in the street graph'</span>)</span>
@@ -456,17 +458,17 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(node)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output cell-output-stdout">
-<pre><code>766 nodes in the street graph
+<pre><code>1177 nodes in the street graph
 
 (0, {'NodeID': 367225, 'name': 'N DUKELAND ST', 'position': (429023.8628222718, 181450.00684655222)})
-(1, {'NodeID': 367313, 'name': 'GREENMOUNT AVE', 'position': (433808.63742829155, 181873.77924021168)})
-(2, {'NodeID': 367428, 'name': 'S CURLEY ST', 'position': (436601.280827219, 180889.90036487588)})
-(3, {'NodeID': 368071, 'name': 'CHRISTIAN ST', 'position': (430246.3910939129, 179351.73809093094)})
-(4, {'NodeID': 368342, 'name': 'E WINE CT', 'position': (433246.963858756, 180159.531350441)})</code></pre>
+(1, {'NodeID': 367456, 'name': 'W READ ST', 'position': (433112.90626279684, 181374.68178852845)})
+(2, {'NodeID': 367483, 'name': 'REMINGTON AVE', 'position': (432440.1964178119, 184064.86845014035)})
+(3, {'NodeID': 367488, 'name': 'CANTERBURY RD', 'position': (432716.56154741155, 185417.96152212998)})
+(4, {'NodeID': 367592, 'name': 'SWEET AIR ST', 'position': (431223.7876548111, 184620.00943614714)})</code></pre>
 </div>
 </div>
 <p>While the edges that represent intersections between streets looks like this:</p>
-<div class="cell" data-execution_count="60">
+<div class="cell" data-execution_count="15">
 <details>
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="co"># sanity check that the edges were loaded properly</span></span>
@@ -476,24 +478,24 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a><span class="bu">list</span>(G.edges.data())[<span class="va">None</span>:<span class="dv">5</span>:<span class="va">None</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output cell-output-stdout">
-<pre><code>2395 edges in the street graph</code></pre>
+<pre><code>3469 edges in the street graph</code></pre>
 </div>
-<div class="cell-output cell-output-display" data-execution_count="60">
-<pre><code>[(0, 360, {'distance': 76.50819939674132, 'weight': 0.9948103975797566}),
- (1, 172, {'distance': 74.01206460762958, 'weight': 0.9951426922082988}),
- (1, 249, {'distance': 1679.2215902070416, 'weight': 0.08155515917109929}),
- (1, 525, {'distance': 209.5358284935493, 'weight': 0.9617248376116582}),
- (2, 127, {'distance': 1091.7130241181349, 'weight': 0.3466599476923783})]</code></pre>
+<div class="cell-output cell-output-display" data-execution_count="15">
+<pre><code>[(0, 89, {'distance': 207.24859639546855, 'weight': 0.9625401124585142}),
+ (0, 169, {'distance': 170.25866131463928, 'weight': 0.9745620176687882}),
+ (0, 256, {'distance': 287.5199729004246, 'weight': 0.9291524699760467}),
+ (0, 498, {'distance': 581.1777592139317, 'weight': 0.7406420337058561}),
+ (0, 545, {'distance': 76.50819939674132, 'weight': 0.9948103975797566})]</code></pre>
 </div>
 </div>
 <p>We now create a GeoDataFrame using the positions of each node, in order to intersect the node locations with the event locations.</p>
-<div class="cell" data-execution_count="59">
+<div class="cell" data-execution_count="16">
 <div class="sourceCode cell-code" id="cb19"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>nodes_gdf <span class="op">=</span> gpd.GeoDataFrame(index<span class="op">=</span>[n <span class="cf">for</span> n <span class="kw">in</span> G.nodes()],</span>
 <span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>                             geometry<span class="op">=</span>[Point(data[<span class="st">'position'</span>]) <span class="cf">for</span> n, data <span class="kw">in</span> G.nodes(data<span class="op">=</span><span class="va">True</span>)],</span>
 <span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>                             crs<span class="op">=</span>events_gdf.crs)</span>
 <span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>nodes_gdf.head()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-display" data-execution_count="59">
+<div class="cell-output cell-output-display" data-execution_count="16">
 <div>
 
 
@@ -511,19 +513,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">1</td>
-<td>POINT (433808.637 181873.779)</td>
+<td>POINT (433112.906 181374.682)</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">2</td>
-<td>POINT (436601.281 180889.900)</td>
+<td>POINT (432440.196 184064.868)</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">3</td>
-<td>POINT (430246.391 179351.738)</td>
+<td>POINT (432716.562 185417.962)</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">4</td>
-<td>POINT (433246.964 180159.531)</td>
+<td>POINT (431223.788 184620.009)</td>
 </tr>
 </tbody>
 </table>
@@ -532,7 +534,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 </div>
 <p>The <code>associate_events_with_nodes()</code> function used below is responsible for matching a geolocated event to the nearest geolocated street segment node. The source code can be <a href="https://github.com/subelsky/crimegraph">found on GitHub</a>.</p>
-<div class="cell" data-execution_count="72">
+<div class="cell" data-execution_count="17">
 <div class="sourceCode cell-code" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Use library code to create a new events dataframe, containing the original events</span></span>
 <span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a><span class="co"># but with an additional NodeIndex column pointing to the identity of the street</span></span>
 <span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a><span class="co"># segment node closest to the event location</span></span>
@@ -540,7 +542,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>events_with_nodes_gdf <span class="op">=</span> associate_events_with_nodes(filtered_events_gdf.copy(), nodes_gdf)</span>
 <span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a>events_with_nodes_gdf</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-display" data-execution_count="72">
+<div class="cell-output cell-output-display" data-execution_count="17">
 <div>
 
 
@@ -556,39 +558,39 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </thead>
 <tbody>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">3</td>
+<td data-quarto-table-cell-role="th">7</td>
 <td>2015-01-01</td>
 <td>Violent</td>
-<td>POINT (431332.752 180242.042)</td>
-<td>341</td>
+<td>POINT (428368.865 182349.618)</td>
+<td>288</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">10</td>
+<td data-quarto-table-cell-role="th">12</td>
 <td>2015-01-01</td>
 <td>Property</td>
-<td>POINT (435855.896 180862.773)</td>
-<td>581</td>
+<td>POINT (430963.824 181421.084)</td>
+<td>582</td>
 </tr>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">14</td>
+<td data-quarto-table-cell-role="th">13</td>
 <td>2015-01-01</td>
 <td>Property</td>
-<td>POINT (434467.335 180626.844)</td>
-<td>712</td>
+<td>POINT (428015.798 184610.740)</td>
+<td>170</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">15</td>
+<td data-quarto-table-cell-role="th">18</td>
 <td>2015-01-01</td>
 <td>Property</td>
-<td>POINT (433200.177 180219.014)</td>
-<td>200</td>
+<td>POINT (429846.032 181657.117)</td>
+<td>54</td>
 </tr>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">17</td>
+<td data-quarto-table-cell-role="th">21</td>
 <td>2015-01-01</td>
 <td>Property</td>
-<td>POINT (433365.953 180121.740)</td>
-<td>485</td>
+<td>POINT (433041.674 182688.032)</td>
+<td>421</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">...</td>
@@ -598,51 +600,51 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <td>...</td>
 </tr>
 <tr class="odd">
+<td data-quarto-table-cell-role="th">2806079</td>
+<td>2023-11-06</td>
+<td>Violent</td>
+<td>POINT (429744.196 181555.260)</td>
+<td>904</td>
+</tr>
+<tr class="even">
 <td data-quarto-table-cell-role="th">2806082</td>
 <td>2023-11-06</td>
 <td>Violent</td>
 <td>POINT (429868.726 181220.342)</td>
-<td>346</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">2806092</td>
-<td>2023-11-06</td>
-<td>Violent</td>
-<td>POINT (436293.361 180922.361)</td>
-<td>584</td>
+<td>518</td>
 </tr>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">2806094</td>
+<td data-quarto-table-cell-role="th">2806096</td>
 <td>2023-11-06</td>
 <td>Violent</td>
-<td>POINT (430494.129 179387.371)</td>
-<td>165</td>
+<td>POINT (427652.695 187341.454)</td>
+<td>604</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">2806102</td>
+<td data-quarto-table-cell-role="th">2806106</td>
 <td>2023-11-06</td>
 <td>Violent</td>
-<td>POINT (434898.160 179884.578)</td>
-<td>408</td>
+<td>POINT (429810.588 181562.061)</td>
+<td>904</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">2806107</td>
 <td>2023-11-06</td>
 <td>Violent</td>
 <td>POINT (429885.091 181226.621)</td>
-<td>346</td>
+<td>518</td>
 </tr>
 </tbody>
 </table>
 
-<p>341342 rows × 4 columns</p>
+<p>399255 rows × 4 columns</p>
 </div>
 </div>
 </div>
 </section>
 <section id="perform-sanity-checks" class="level2" data-number="6">
 <h2 data-number="6" class="anchored" data-anchor-id="perform-sanity-checks"><span class="header-section-number">6</span> Perform Sanity Checks</h2>
-<div class="cell" data-execution_count="62">
+<div class="cell" data-execution_count="18">
 <details>
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb21"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Perform some sanity checks</span></span>
@@ -653,11 +655,11 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f'</span><span class="sc">{</span><span class="bu">len</span>(nodes_with_zero_events)<span class="sc">}</span><span class="ss"> nodes with zero events'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
 <div class="cell-output cell-output-stdout">
-<pre><code>700 unique nodes associated with at least one crime event
-66 nodes with zero events</code></pre>
+<pre><code>1101 unique nodes associated with at least one crime event
+76 nodes with zero events</code></pre>
 </div>
 </div>
-<div class="cell" data-execution_count="63">
+<div class="cell" data-execution_count="19">
 <details>
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb23"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Aggregate crimes by their nearest node ID to get the sum total for each node</span></span>
@@ -671,7 +673,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </details>
 </div>
 <p>This plot shows the results of our work so far. All crime events have been fixed to a specific street segment node, and the plot looks reasonable.</p>
-<div class="cell" data-execution_count="79">
+<div class="cell" data-execution_count="20">
 <details>
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb24"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> tkinter <span class="im">import</span> font</span>
@@ -705,7 +707,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="create-timesteps" class="level2" data-number="7">
 <h2 data-number="7" class="anchored" data-anchor-id="create-timesteps"><span class="header-section-number">7</span> Create Timesteps</h2>
 <p>We now need to reorganize the events dataframe into a series of daily snapshots that aggregate crime counts into a feature vector for each node, suitable for training the model and for using the model to make predictions.</p>
-<div class="cell" data-execution_count="65">
+<div class="cell" data-execution_count="21">
 <div class="sourceCode cell-code" id="cb25"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Group events by Date and NodeIndex to get the number of events of each type</span></span>
 <span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>timesteps <span class="op">=</span> events_with_nodes_gdf.pivot_table(</span>
 <span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>    index<span class="op">=</span>[<span class="st">'Date'</span>, <span class="st">'NodeIndex'</span>],</span>
@@ -715,7 +717,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a>)</span>
 <span id="cb25-8"><a href="#cb25-8" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb25-9"><a href="#cb25-9" aria-hidden="true" tabindex="-1"></a>timesteps</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-display" data-execution_count="65">
+<div class="cell-output cell-output-display" data-execution_count="21">
 <div>
 
 
@@ -739,34 +741,34 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tbody>
 <tr class="odd">
 <td rowspan="5" data-quarto-table-cell-role="th" data-valign="top">2015-01-01</td>
-<td data-quarto-table-cell-role="th">18</td>
+<td data-quarto-table-cell-role="th">0</td>
 <td>0</td>
-<td>1</td>
-<td>1</td>
+<td>0</td>
+<td>2</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">19</td>
+<td data-quarto-table-cell-role="th">27</td>
+<td>0</td>
+<td>0</td>
+<td>1</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">36</td>
+<td>0</td>
+<td>1</td>
+<td>0</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">44</td>
 <td>0</td>
 <td>1</td>
 <td>1</td>
 </tr>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">20</td>
-<td>0</td>
-<td>1</td>
-<td>0</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">43</td>
+<td data-quarto-table-cell-role="th">53</td>
 <td>1</td>
 <td>0</td>
 <td>0</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">82</td>
-<td>0</td>
-<td>0</td>
-<td>1</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">...</td>
@@ -777,39 +779,39 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 <tr class="odd">
 <td rowspan="5" data-quarto-table-cell-role="th" data-valign="top">2023-11-06</td>
-<td data-quarto-table-cell-role="th">700</td>
-<td>0</td>
-<td>1</td>
-<td>0</td>
-</tr>
-<tr class="even">
-<td data-quarto-table-cell-role="th">705</td>
-<td>1</td>
+<td data-quarto-table-cell-role="th">1127</td>
 <td>2</td>
 <td>0</td>
-</tr>
-<tr class="odd">
-<td data-quarto-table-cell-role="th">723</td>
-<td>1</td>
-<td>0</td>
 <td>0</td>
 </tr>
 <tr class="even">
-<td data-quarto-table-cell-role="th">729</td>
+<td data-quarto-table-cell-role="th">1130</td>
 <td>0</td>
 <td>1</td>
 <td>0</td>
 </tr>
 <tr class="odd">
-<td data-quarto-table-cell-role="th">750</td>
+<td data-quarto-table-cell-role="th">1139</td>
 <td>0</td>
 <td>2</td>
+<td>0</td>
+</tr>
+<tr class="even">
+<td data-quarto-table-cell-role="th">1156</td>
+<td>0</td>
+<td>1</td>
+<td>0</td>
+</tr>
+<tr class="odd">
+<td data-quarto-table-cell-role="th">1166</td>
+<td>2</td>
+<td>0</td>
 <td>0</td>
 </tr>
 </tbody>
 </table>
 
-<p>234756 rows × 3 columns</p>
+<p>278134 rows × 3 columns</p>
 </div>
 </div>
 </div>
@@ -826,7 +828,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </figure>
 </div>
 <p>Source code for the <code>perform_exponential_smoothing()</code> function called below can be <a href="https://github.com/subelsky/crimegraph">found on GitHub</a>.</p>
-<div class="cell" data-execution_count="66">
+<div class="cell" data-execution_count="22">
 <div class="sourceCode cell-code" id="cb26"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lib.events <span class="im">import</span> perform_exponential_smoothing</span>
 <span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>smoothing_factor <span class="op">=</span> <span class="fl">0.5</span></span>
@@ -836,7 +838,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="sanity-check-the-smoothing-algorithm" class="level2" data-number="9">
 <h2 data-number="9" class="anchored" data-anchor-id="sanity-check-the-smoothing-algorithm"><span class="header-section-number">9</span> Sanity Check the Smoothing Algorithm</h2>
 <p>When we try to re-create the plot from the paper, we see a problem. Our smoothed values decay very slowly:</p>
-<div class="cell" data-execution_count="67">
+<div class="cell" data-execution_count="23">
 <details>
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb27"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lib.plots <span class="im">import</span> plot_event_counts</span>
@@ -855,12 +857,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </section>
 <section id="add-zero-event-timesteps" class="level2" data-number="11">
 <h2 data-number="11" class="anchored" data-anchor-id="add-zero-event-timesteps"><span class="header-section-number">11</span> Add Zero Event Timesteps</h2>
-<div class="cell" data-execution_count="68">
+<div class="cell" data-execution_count="24">
 <div class="sourceCode cell-code" id="cb28"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lib.events <span class="im">import</span> interpolate_and_smooth</span>
 <span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>interpolated_smoothed_timesteps <span class="op">=</span> interpolate_and_smooth(timesteps, <span class="fl">0.5</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<div class="cell" data-execution_count="69">
+<div class="cell" data-execution_count="25">
 <details>
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb29"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lib.plots <span class="im">import</span> plot_event_counts</span>
@@ -873,12 +875,12 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </div>
 <p>That looks better. Note that the smoothing factor <code>0.5</code> was chosen arbitrarily through trial and error. The true value will need to be chosen via training experiments<a href="#fn5" class="footnote-ref" id="fnref5" role="doc-noteref"><sup>5</sup></a>.</p>
 <p>Here is a sample of the final dataframe to be used for training the model. Note that we are keeping the original columns so that the smoothing function can be run again during those experiments:</p>
-<div class="cell" data-execution_count="70">
+<div class="cell" data-execution_count="26">
 <details>
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb30"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>interpolated_smoothed_timesteps</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </details>
-<div class="cell-output cell-output-display" data-execution_count="70">
+<div class="cell-output cell-output-display" data-execution_count="26">
 <div>
 
 
@@ -908,53 +910,53 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <tbody>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">2015-01-01</td>
-<td data-quarto-table-cell-role="th">18</td>
+<td data-quarto-table-cell-role="th">0</td>
 <td>0.0</td>
-<td>1.0</td>
-<td>1.0</td>
 <td>0.0</td>
-<td>1.000000e+00</td>
-<td>1.000000e+00</td>
+<td>2.0</td>
+<td>0.0</td>
+<td>0.000000e+00</td>
+<td>2.000</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">2015-01-02</td>
-<td data-quarto-table-cell-role="th">18</td>
+<td data-quarto-table-cell-role="th">0</td>
 <td>0.0</td>
 <td>0.0</td>
 <td>0.0</td>
 <td>0.0</td>
-<td>5.000000e-01</td>
-<td>5.000000e-01</td>
+<td>0.000000e+00</td>
+<td>1.000</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">2015-01-03</td>
-<td data-quarto-table-cell-role="th">18</td>
+<td data-quarto-table-cell-role="th">0</td>
 <td>0.0</td>
-<td>1.0</td>
-<td>1.0</td>
 <td>0.0</td>
-<td>7.500000e-01</td>
-<td>7.500000e-01</td>
+<td>0.0</td>
+<td>0.0</td>
+<td>0.000000e+00</td>
+<td>0.500</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">2015-01-04</td>
-<td data-quarto-table-cell-role="th">18</td>
+<td data-quarto-table-cell-role="th">0</td>
 <td>0.0</td>
 <td>0.0</td>
 <td>0.0</td>
 <td>0.0</td>
-<td>3.750000e-01</td>
-<td>3.750000e-01</td>
+<td>0.000000e+00</td>
+<td>0.250</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">2015-01-05</td>
-<td data-quarto-table-cell-role="th">18</td>
+<td data-quarto-table-cell-role="th">0</td>
 <td>0.0</td>
 <td>0.0</td>
 <td>0.0</td>
 <td>0.0</td>
-<td>1.875000e-01</td>
-<td>1.875000e-01</td>
+<td>0.000000e+00</td>
+<td>0.125</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">...</td>
@@ -968,58 +970,58 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">2023-11-02</td>
-<td data-quarto-table-cell-role="th">653</td>
+<td data-quarto-table-cell-role="th">687</td>
 <td>0.0</td>
 <td>0.0</td>
 <td>0.0</td>
 <td>0.0</td>
-<td>3.970467e-23</td>
-<td>3.587324e-43</td>
+<td>8.077936e-28</td>
+<td>0.000</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">2023-11-03</td>
-<td data-quarto-table-cell-role="th">653</td>
+<td data-quarto-table-cell-role="th">687</td>
 <td>0.0</td>
 <td>0.0</td>
 <td>0.0</td>
 <td>0.0</td>
-<td>1.985233e-23</td>
-<td>1.793662e-43</td>
+<td>4.038968e-28</td>
+<td>0.000</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">2023-11-04</td>
-<td data-quarto-table-cell-role="th">653</td>
+<td data-quarto-table-cell-role="th">687</td>
 <td>0.0</td>
 <td>0.0</td>
 <td>0.0</td>
 <td>0.0</td>
-<td>9.926167e-24</td>
-<td>8.968310e-44</td>
+<td>2.019484e-28</td>
+<td>0.000</td>
 </tr>
 <tr class="even">
 <td data-quarto-table-cell-role="th">2023-11-05</td>
-<td data-quarto-table-cell-role="th">653</td>
+<td data-quarto-table-cell-role="th">687</td>
 <td>0.0</td>
 <td>0.0</td>
 <td>0.0</td>
 <td>0.0</td>
-<td>4.963084e-24</td>
-<td>4.484155e-44</td>
+<td>1.009742e-28</td>
+<td>0.000</td>
 </tr>
 <tr class="odd">
 <td data-quarto-table-cell-role="th">2023-11-06</td>
-<td data-quarto-table-cell-role="th">653</td>
+<td data-quarto-table-cell-role="th">687</td>
 <td>0.0</td>
 <td>0.0</td>
 <td>0.0</td>
 <td>0.0</td>
-<td>2.481542e-24</td>
-<td>2.242078e-44</td>
+<td>5.048710e-29</td>
+<td>0.000</td>
 </tr>
 </tbody>
 </table>
 
-<p>2262400 rows × 6 columns</p>
+<p>3558432 rows × 6 columns</p>
 </div>
 </div>
 </div>
@@ -1027,7 +1029,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="saving-our-work" class="level2" data-number="12">
 <h2 data-number="12" class="anchored" data-anchor-id="saving-our-work"><span class="header-section-number">12</span> Saving Our Work</h2>
 <p>As in part 1, we save the timesteps to disk for use when training the model. We also save the events data, in case we want to use it for future experiments.</p>
-<div class="cell" data-execution_count="71">
+<div class="cell" data-execution_count="27">
 <div class="sourceCode cell-code" id="cb31"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>smoothed_timesteps.to_csv(<span class="st">'../../data/processed/timesteps.csv.gz'</span>, compression<span class="op">=</span><span class="st">'gzip'</span>)</span>
 <span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a>events_with_nodes_gdf.to_file(<span class="st">'../../data/processed/events_with_nodes_gdf.geojson'</span>, driver<span class="op">=</span><span class="st">'GeoJSON'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>

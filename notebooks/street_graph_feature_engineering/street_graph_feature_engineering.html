@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Mike Subelsky">
-<meta name="dcterms.date" content="2024-01-18">
+<meta name="dcterms.date" content="2024-01-26">
 <meta name="keywords" content="graph deep learning, gis, gldNET, crime forecasting, machine learning">
 
 <title>CrimeGraph: Feature Engineering the Street Graph</title>
@@ -105,8 +105,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <ul class="dropdown-menu">
       <li><a class="dropdown-item active" aria-current="page" href="#">Part 1</a></li>
       <li><a class="dropdown-item" href="../event_timestep_feature_engineering/">Part 2</a></li>
+      <li><a class="dropdown-item" href="../model_development/">Part 3</a></li>
       <li><hr class="dropdown-divider"></li>
-      <li><a class="dropdown-item disabled" aria-disabled="true" href="#">Part 3 (WIP)</a></li>
+      <li><a class="dropdown-item disabled" aria-disabled="true" href="#">Part 4 (coming soon)</a></li>
     </ul>
   </li>
 </ul>
@@ -162,7 +163,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">January 18, 2024</p>
+      <p class="date">January 26, 2024</p>
     </div>
   </div>
   
@@ -205,7 +206,7 @@ Caution
 <section id="loading-street-segment-geometry" class="level2" data-number="1">
 <h2 data-number="1" class="anchored" data-anchor-id="loading-street-segment-geometry"><span class="header-section-number">1</span> Loading Street Segment Geometry</h2>
 <p>We begin by loading a GIS<a href="#fn3" class="footnote-ref" id="fnref3" role="doc-noteref"><sup>3</sup></a> shapefile describing the geometry of Baltimore streets. The shapefile was downloaded from <a href="https://data-maryland.opendata.arcgis.com/datasets/maryland::baltimore-city-roads/explore?location=39.297904%2C-76.586923%2C13.00">Maryland’s Open Data portal</a>.</p>
-<div class="cell" data-execution_count="1">
+<div class="cell" data-execution_count="2">
 <div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Load geopandas, an open source code library that processes shapefile data</span></span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> geopandas <span class="im">as</span> gpd</span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
@@ -213,20 +214,20 @@ Caution
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>streets_gdf <span class="op">=</span> gpd.read_file(<span class="st">'../../data/city_streets/MDOT_Know_Your_Roads.shp'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>The geodataframe coordinates are specified in spherical coordinates<a href="#fn4" class="footnote-ref" id="fnref4" role="doc-noteref"><sup>4</sup></a> (hours/minutes/seconds), which are incovenient for measuring distances between intersecting streets. Since Baltimore is a relatively small area, we can ignore the curvature of the Earth, enabling us to measure straight-line<a href="#fn5" class="footnote-ref" id="fnref5" role="doc-noteref"><sup>5</sup></a> distances in meters.</p>
-<div class="cell" data-execution_count="2">
+<div class="cell" data-execution_count="3">
 <div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Convert the geodataframe to use the Maryland State Plane coordinate system,</span></span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="co"># delineated in meters</span></span>
 <span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>streets_gdf <span class="op">=</span> streets_gdf.to_crs(epsg<span class="op">=</span><span class="dv">26985</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<div class="cell" data-execution_count="3">
+<div class="cell" data-execution_count="4">
 <div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Remove unused columns from the shapefile, and rename remaining columns</span></span>
 <span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="co"># so they are easier to read</span></span>
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>streets_gdf.drop(columns<span class="op">=</span>[<span class="st">'MUNICIPALI'</span>, <span class="st">'OWNERSHIP'</span>, <span class="st">'SHAPE_Leng'</span>], inplace<span class="op">=</span><span class="va">True</span>)</span>
 <span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>streets_gdf.rename(columns<span class="op">=</span>{<span class="st">'OBJECTID'</span>: <span class="st">'NodeID'</span>, <span class="st">'ROAD_NAME'</span>: <span class="st">'Name'</span>}, inplace<span class="op">=</span><span class="va">True</span>)</span>
 <span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>streets_gdf.head()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-display" data-execution_count="3">
+<div class="cell-output cell-output-display" data-execution_count="4">
 <div>
 
 
@@ -281,7 +282,7 @@ Caution
 <section id="restrict-the-data-to-streets-within-city-limits" class="level2" data-number="2">
 <h2 data-number="2" class="anchored" data-anchor-id="restrict-the-data-to-streets-within-city-limits"><span class="header-section-number">2</span> Restrict the Data to Streets Within City Limits</h2>
 <p>Since we are only interested in forecasting events within city limits, we should exclude streets that are maintained by the city, but which lie outside of those limits.</p>
-<div class="cell" data-execution_count="4">
+<div class="cell" data-execution_count="5">
 <div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 1. filter_gdf() is a custom function defined in the lib/ directory of this project</span></span>
 <span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lib.geo_utils <span class="im">import</span> filter_gdf</span>
 <span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
@@ -294,7 +295,7 @@ Caution
 <span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>streets_gdf <span class="op">=</span> filter_gdf(streets_gdf, minLat<span class="op">=</span>minLat, minLon<span class="op">=</span>minLon, maxLat<span class="op">=</span>maxLat, maxLon<span class="op">=</span>maxLon)</span>
 <span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>streets_gdf.head()</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-display" data-execution_count="4">
+<div class="cell-output cell-output-display" data-execution_count="5">
 <div>
 
 
@@ -348,7 +349,7 @@ Caution
 <section id="plot-filtered-street-segments" class="level2" data-number="3">
 <h2 data-number="3" class="anchored" data-anchor-id="plot-filtered-street-segments"><span class="header-section-number">3</span> Plot Filtered Street Segments</h2>
 <p>This gives us a sanity check to make sure we selected the correct streets.</p>
-<div class="cell" data-execution_count="5">
+<div class="cell" data-execution_count="6">
 <details>
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> tkinter <span class="im">import</span> font</span>
@@ -380,7 +381,7 @@ Caution
 <section id="create-a-sample-of-streets" class="level2" data-number="4">
 <h2 data-number="4" class="anchored" data-anchor-id="create-a-sample-of-streets"><span class="header-section-number">4</span> Create a Sample of Streets</h2>
 <p>Since we will be constructing a graph that represents street intersections, I decided to zoom into a selection a handful of streets in the northern half of the city, to make sure the code for calculating the weights of the edges works correctly.</p>
-<div class="cell" data-execution_count="6">
+<div class="cell" data-execution_count="7">
 <div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> re</span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lib.geo_utils <span class="im">import</span> filter_gdf</span>
 <span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a></span>
@@ -398,7 +399,7 @@ Caution
 <span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>street_sample <span class="op">=</span> filter_gdf(street_sample, minLat<span class="op">=</span>minLat, minLon<span class="op">=</span>minLon, maxLat<span class="op">=</span>maxLat, maxLon<span class="op">=</span>maxLon)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<div class="cell" data-execution_count="7">
+<div class="cell" data-execution_count="8">
 <details>
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> geopandas <span class="im">as</span> gpd</span>
@@ -459,7 +460,7 @@ Caution
 <p>The GLDNet architecture views the city as a graph representing street segments as nodes connected with edges. Each edge represents an intersection between street segment nodes, and each edge is described by a weight<a href="#fn6" class="footnote-ref" id="fnref6" role="doc-noteref"><sup>6</sup></a> indicating how closely connected the streets are.</p>
 <p>In the code below, <code>alpha</code> is a <a href="https://en.wikipedia.org/wiki/Hyperparameter_(machine_learning)">hyperparameter</a> that affects the model training process. It controls the rate of decay of the edge weights as the network distance<a href="#fn7" class="footnote-ref" id="fnref7" role="doc-noteref"><sup>7</sup></a> between two intersecting street segments increases.</p>
 <p>A higher value of <code>alpha</code> will result in a slower decay rate, meaning that for higher values, the weights will decrease more slowly as the distance between two intersection streets increases. I chose <code>750</code> as a starting point through trial and error, but we will need to do hyperparameter tuning experiments to find the most optimal value<a href="#fn8" class="footnote-ref" id="fnref8" role="doc-noteref"><sup>8</sup></a>. See the <a href="https://github.com/subelsky/crimegraph/blob/main/notebooks/street_graph_feature_engineering/lib/graphs.py">GitHub</a> repository to see how <code>create_networkx_graph()</code> works.</p>
-<div class="cell" data-execution_count="8">
+<div class="cell" data-execution_count="9">
 <div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># create_network_graph() is a custom function defined in the lib/ directory</span></span>
 <span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lib.graphs <span class="im">import</span> create_network_graph</span>
 <span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> re</span>
@@ -472,7 +473,7 @@ Caution
 <span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>G <span class="op">=</span> create_network_graph(street_sample, alpha<span class="op">=</span><span class="dv">750</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>Here we print some basic facts about the graph, and show a sample of what the data looks like so far:</p>
-<div class="cell" data-execution_count="9">
+<div class="cell" data-execution_count="10">
 <details>
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(G)</span>
@@ -497,7 +498,7 @@ Caution
 </section>
 <section id="plot-street-sample-network-graph" class="level2" data-number="6">
 <h2 data-number="6" class="anchored" data-anchor-id="plot-street-sample-network-graph"><span class="header-section-number">6</span> Plot Street Sample Network Graph</h2>
-<div class="cell" data-execution_count="10">
+<div class="cell" data-execution_count="11">
 <details>
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># custom drawing function defined in the lib/ directory</span></span>
@@ -536,26 +537,24 @@ Caution
 <section id="create-the-full-street-graph-for-model-training" class="level2" data-number="7">
 <h2 data-number="7" class="anchored" data-anchor-id="create-the-full-street-graph-for-model-training"><span class="header-section-number">7</span> Create the Full Street Graph for Model Training</h2>
 <p>Using the entire set of streets for the city would require too much time and computational power for this experiment, so we instead focus on a broad swath of streets running west-to-east across the city’s core.</p>
-<div class="cell" data-execution_count="11">
+<div class="cell" data-execution_count="12">
 <div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
 <span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> lib.geo_utils <span class="im">import</span> filter_gdf, make_bounding_box</span>
 <span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Set the coordinates for a bounding box limiting our street segments to a strip of</span></span>
-<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a><span class="co"># streets on either side of downtown Baltimore</span></span>
-<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>minLat<span class="op">=</span><span class="fl">39.281302796434016</span></span>
-<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>minLon<span class="op">=-</span><span class="fl">76.665</span></span>
-<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>maxLat<span class="op">=</span><span class="fl">39.299</span></span>
-<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>maxLon<span class="op">=-</span><span class="fl">76.575</span></span>
-<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Exclude street segments outside of the bounding box</span></span>
-<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>central_baltimore_subset <span class="op">=</span> filter_gdf(streets_gdf, minLat<span class="op">=</span>minLat, minLon<span class="op">=</span>minLon, maxLat<span class="op">=</span>maxLat, maxLon<span class="op">=</span>maxLon)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a><span class="co"># lower_right corner in Mount Vernon neighborhood</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>minLat, maxLon <span class="op">=</span> <span class="fl">39.293781858831856</span>, <span class="op">-</span><span class="fl">76.61436168242447</span></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a><span class="co"># upper left corner near Pimlico Race Track</span></span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>maxLat, minLon <span class="op">=</span> <span class="fl">39.354471979447325</span>, <span class="op">-</span><span class="fl">76.6798709073914</span></span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Exclude street segments outside of the bounding box</span></span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>baltimore_subset <span class="op">=</span> filter_gdf(streets_gdf, minLat<span class="op">=</span>minLat, minLon<span class="op">=</span>minLon, maxLat<span class="op">=</span>maxLat, maxLon<span class="op">=</span>maxLon)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
 <section id="plot-the-full-street-graph" class="level2" data-number="8">
 <h2 data-number="8" class="anchored" data-anchor-id="plot-the-full-street-graph"><span class="header-section-number">8</span> Plot the Full Street Graph</h2>
 <p>Just as we did with the sample, we plot the full street graph to make sure it looks reasonable.</p>
-<div class="cell" data-execution_count="12">
+<div class="cell" data-execution_count="13">
 <details>
 <summary>Code</summary>
 <div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
@@ -563,13 +562,13 @@ Caution
 <span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot the remaining streets</span></span>
 <span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>fig, ax <span class="op">=</span> plt.subplots(figsize<span class="op">=</span>(<span class="dv">20</span>,<span class="dv">15</span>))</span>
-<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>central_baltimore_subset.plot(ax<span class="op">=</span>ax)</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>baltimore_subset.plot(ax<span class="op">=</span>ax)</span>
 <span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Because longer streets extend past the bounding box, we use the same bounding coordinates</span></span>
 <span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a><span class="co"># to limit the borders of the plot. It's confusing if we draw parts of the street segments</span></span>
 <span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a><span class="co"># that will be excluded from training</span></span>
-<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>central_baltimore_bounding_box <span class="op">=</span> make_bounding_box(minLat<span class="op">=</span>minLat, minLon<span class="op">=</span>minLon, maxLat<span class="op">=</span>maxLat, maxLon<span class="op">=</span>maxLon)</span>
-<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>min_x, min_y, max_x, max_y <span class="op">=</span> central_baltimore_bounding_box.bounds</span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>bounding_box <span class="op">=</span> make_bounding_box(minLat<span class="op">=</span>minLat, minLon<span class="op">=</span>minLon, maxLat<span class="op">=</span>maxLat, maxLon<span class="op">=</span>maxLon)</span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>min_x, min_y, max_x, max_y <span class="op">=</span> bounding_box.bounds</span>
 <span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a><span class="co"># Spherical coordinates for the center of Baltimore</span></span>
 <span id="cb13-15"><a href="#cb13-15" aria-hidden="true" tabindex="-1"></a>latitude <span class="op">=</span> <span class="fl">39.289444</span></span>
@@ -591,7 +590,7 @@ Caution
 <span id="cb13-31"><a href="#cb13-31" aria-hidden="true" tabindex="-1"></a>ax.set_xlim(min_x, max_x)</span>
 <span id="cb13-32"><a href="#cb13-32" aria-hidden="true" tabindex="-1"></a>ax.set_ylim(min_y, max_y)</span>
 <span id="cb13-33"><a href="#cb13-33" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb13-34"><a href="#cb13-34" aria-hidden="true" tabindex="-1"></a>plt.title(<span class="st">'Central Baltimore Streets'</span>, fontsize<span class="op">=</span><span class="dv">24</span>)</span>
+<span id="cb13-34"><a href="#cb13-34" aria-hidden="true" tabindex="-1"></a>plt.title(<span class="st">'Baltimore Street Subset'</span>, fontsize<span class="op">=</span><span class="dv">24</span>)</span>
 <span id="cb13-35"><a href="#cb13-35" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb13-36"><a href="#cb13-36" aria-hidden="true" tabindex="-1"></a>ax.set_xticks([])</span>
 <span id="cb13-37"><a href="#cb13-37" aria-hidden="true" tabindex="-1"></a>ax.set_yticks([])</span>
@@ -603,7 +602,7 @@ Caution
 </div>
 </div>
 <p>The central Baltimore subset looks OK, so we proceed to create the network graph, as we did with the sample.</p>
-<div class="cell" data-execution_count="13">
+<div class="cell" data-execution_count="14">
 <div class="sourceCode cell-code" id="cb14"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> importlib</span>
 <span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> lib.graphs</span>
 <span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a></span>
@@ -612,30 +611,30 @@ Caution
 <span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Use the row number of each street segment as its ID; the original</span></span>
 <span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a><span class="co"># index numbers are not sequential, since we filtered the geodataframe</span></span>
-<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>central_baltimore_subset.reset_index(inplace<span class="op">=</span><span class="va">True</span>, drop<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>baltimore_subset.reset_index(inplace<span class="op">=</span><span class="va">True</span>, drop<span class="op">=</span><span class="va">True</span>)</span>
 <span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>G <span class="op">=</span> create_network_graph(central_baltimore_subset, alpha<span class="op">=</span><span class="dv">750</span>)</span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>G <span class="op">=</span> create_network_graph(baltimore_subset, alpha<span class="op">=</span><span class="dv">750</span>)</span>
 <span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(G)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>Graph with 766 nodes and 2395 edges</code></pre>
+<pre><code>Graph with 1177 nodes and 3469 edges</code></pre>
 </div>
 </div>
-<div class="cell" data-execution_count="14">
+<div class="cell" data-execution_count="15">
 <div class="sourceCode cell-code" id="cb16"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> node <span class="kw">in</span> <span class="bu">list</span>(G.nodes.data())[<span class="va">None</span>:<span class="dv">5</span>:<span class="va">None</span>]:</span>
 <span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(node)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>(0, {'NodeID': 367225, 'name': 'N DUKELAND ST', 'position': (429023.8628222718, 181450.00684655222)})
-(1, {'NodeID': 367313, 'name': 'GREENMOUNT AVE', 'position': (433808.63742829155, 181873.77924021168)})
-(2, {'NodeID': 367428, 'name': 'S CURLEY ST', 'position': (436601.280827219, 180889.90036487588)})
-(3, {'NodeID': 368071, 'name': 'CHRISTIAN ST', 'position': (430246.3910939129, 179351.73809093094)})
-(4, {'NodeID': 368342, 'name': 'E WINE CT', 'position': (433246.963858756, 180159.531350441)})</code></pre>
+(1, {'NodeID': 367456, 'name': 'W READ ST', 'position': (433112.90626279684, 181374.68178852845)})
+(2, {'NodeID': 367483, 'name': 'REMINGTON AVE', 'position': (432440.1964178119, 184064.86845014035)})
+(3, {'NodeID': 367488, 'name': 'CANTERBURY RD', 'position': (432716.56154741155, 185417.96152212998)})
+(4, {'NodeID': 367592, 'name': 'SWEET AIR ST', 'position': (431223.7876548111, 184620.00943614714)})</code></pre>
 </div>
 </div>
 </section>
 <section id="save-the-graph-to-disk" class="level2" data-number="9">
 <h2 data-number="9" class="anchored" data-anchor-id="save-the-graph-to-disk"><span class="header-section-number">9</span> Save the Graph to Disk</h2>
 <p>Finally, we save the street graph to a JSON file. During model training, the file will be loaded and used to map the locations of crime events.</p>
-<div class="cell" data-execution_count="22">
+<div class="cell" data-execution_count="16">
 <div class="sourceCode cell-code" id="cb18"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pickle</span>
 <span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> networkx <span class="im">as</span> nx</span>
 <span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a></span>
@@ -652,8 +651,8 @@ Caution
 </section>
 <section id="save-the-streets-geographic-data-to-disk" class="level2" data-number="10">
 <h2 data-number="10" class="anchored" data-anchor-id="save-the-streets-geographic-data-to-disk"><span class="header-section-number">10</span> Save the Streets Geographic Data to Disk</h2>
-<div class="cell" data-execution_count="18">
-<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>central_baltimore_subset.to_file(<span class="st">'../../data/processed/central_baltimore_street_segments.json'</span>, driver<span class="op">=</span><span class="st">'GeoJSON'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell" data-execution_count="17">
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>baltimore_subset.to_file(<span class="st">'../../data/processed/baltimore_street_segment_subset.json'</span>, driver<span class="op">=</span><span class="st">'GeoJSON'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
 <section id="up-next" class="level2 unnumbered">
