@@ -9,8 +9,9 @@ Models with this design can learn from the spatial patterns of crime events by r
 ## Work in Progress
 
 - [Street Graph Feature Engineering](https://www.subelsky.com/crimegraph/street_graph_feature_engineering/)
-- Event Timestep Feature Engineering (coming soon)
-- Graph deep learning model training (coming soon)
+- [Event Timestep Feature Engineering](https://www.subelsky.com/crimegraph/event_timestep_feature_engineering/)
+- [Graph Deep Learning Network Architecture](https://www.subelsky.com/crimegraph/model_development/)
+- Model Training and Hyperparameter Tuning (coming soon)
 
 ## Technical Details
 
