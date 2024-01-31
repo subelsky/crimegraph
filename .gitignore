@@ -23,6 +23,8 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+notebooks/model_training_and_tuning/tuning
+notebooks/model_training_and_tuning/tensorboard
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -156,3 +158,4 @@ tmp/
 data/spotcrime/
 data/processed/
 archive/
+checkpoints

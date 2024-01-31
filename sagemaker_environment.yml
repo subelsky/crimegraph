@@ -1,0 +1,5 @@
+name: crimegraph
+dependencies:
+- python=3.8
+- numpy
+- pip
